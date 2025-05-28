@@ -16,6 +16,9 @@ using GridapPETSc: PETSC
 using LinearAlgebra: diag, cond
 using Symbolics
 
+using Plots
+using DelimitedFiles
+
 import Random
 
 include("ActivityFunctions.jl")
@@ -29,6 +32,8 @@ include("SurfaceBulkInSphere.jl")
 include("SurfaceBulkViscousFlowsAxisymmetric.jl")
 include("SurfaceBulkViscousFlows3D.jl")
 
+include("MechanochemicalAxisymmetric.jl")
+
 export unit_density
 export verification
 export mechanostability
@@ -39,5 +44,7 @@ export contractile_ring_3D
 export surface_bulk_in_sphere_axisymmetric
 export surface_bulk_viscous_flows_axisymmetric
 export surface_bulk_viscous_flows_3D
+
+export run_mechanochemical_axisymmetric
 
 end # module SurfaceBulkViscousFlows
