@@ -8,7 +8,8 @@
 using Gridap
 using GridapEmbedded
 using Plots
-using SurfaceBulkViscousFlows
+using SurfaceBulkViscousFlows 
+
 
 ###############CONSTANT MECHANICAL PARAMETERS ##############
 partition=20       #size of the FE system
@@ -46,7 +47,6 @@ dᵃ = 0.04  #deactivation
 α₀ = 1.00  #basal activation
 α =0.2*α₀ #activation through mechanics, zero for only local inhibition
 Drac = 0.5 #diffusion rate
-mTorc = 0.0#1
 αopto = 1 # opto input for Rac
 a_t = 4
 
@@ -68,7 +68,7 @@ setsx=2
 
 #output folder name
 len=trunc(λ,digits=2)
-const simulation= "Conserved/mechanochemical/T=$T ten0=$ten0 db=$dᵇ da=$dᵃ a_t=b_t=$b_t rth=$MCAbth len=$len/bopto=$βopto aopto=$αopto rho0=$rho0 mTorc=$mTorc D=$D a0=$α₀ b0=$β₀ te=$τₑ ta=$τₐ M0=$M0 deltat=$Δt vCTE=$vCTE tenth=$tenth lb=$λᵇ/"
+const simulation= "Conserved/mechanochemical/T=$T ten0=$ten0 db=$dᵇ da=$dᵃ a_t=b_t=$b_t rth=$MCAbth len=$len/bopto=$βopto aopto=$αopto rho0=$rho0 D=$D a0=$α₀ b0=$β₀ te=$τₑ ta=$τₐ M0=$M0 deltat=$Δt vCTE=$vCTE tenth=$tenth lb=$λᵇ/"
 #store VTUs in one folder
 pVTU="./VTU/"*simulation
 mkpath(pVTU)
@@ -98,12 +98,13 @@ for i in 2:1:setsx
     λ⁻² = 1/(λ*λ)
     xχ[i]=χ 
     #η= 0+0*j+10^(1*(j+1))              # [pN s/ um] 2D viscosity of the cortex
-    lη = η
+    lη = η  
     xη[j]=lη
     # tension[i,j,:,:],MCA_b[i,j,:,:],v[i,j,:,:],a[i,j,:,:],b[i,j,:,:],αt[i,j,:,:],βt[i,j,:,:] = 
       run_mechanochemical_axisymmetric(χ,λ⁻²,lη,T,Δt,partition,
         L,simulation,wrac,αopto,βopto,kon,koff,M0,α₀,β₀,k,D,
-        σₐ₀,λᵇ,Drac,Drho,mTorc,rho0,ten0,a_t,b_t,α,β,dᵃ,dᵇ,sig0,tenth,λʳᴬ)
+        σₐ₀,λᵇ,Drac,Drho,rac0,rho0,ten0,a_t,b_t,α,β,dᵃ,dᵇ,
+        sig0,tenth,λʳᴬ,MCAbth,topto,vCTE)
   end
 end
 

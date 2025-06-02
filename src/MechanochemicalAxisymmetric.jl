@@ -19,13 +19,55 @@ function conservation(sMCAu,sMCAb,Minitial)
 end
  
 function threshold(x,x₀,xth)
+  return  (0.5 * (tanh∘(x/x₀ - xth/x₀)+1)) 
+end
+function threshold2(x,x₀,xth)
   return  (0.5 * (tanh.(x/x₀ .- xth/x₀).+1)) 
+end
+
+function MCA_bound_unbound_weak_forms(Δt,kon,koff,λᵇ,λ,R,D,uh_MCAb_old,uh_MCAu_old,nΓ,dΓ)
+    # Now for MAC bound
+  # mass term for the temporal evolution MCA_b
+  mMCA(Δt,MCA_b,w) = ∫( ( (MCA_b*w)/Δt )*y )dΓ
+  aMCAb(MCA_b,v,w) = mMCA(Δt,MCA_b,w) + ∫( ( 0.001 * (∇ᵈ(MCA_b,nΓ)⋅∇ᵈ(w,nΓ)) )*y )dΓ + 
+    ∫( ( w * ( v * (∇ᵈ(MCA_b,nΓ)⋅VectorValue(1.0,1.0)) + MCA_b * (∇ᵈ(v,nΓ)⋅VectorValue(1.0,1.0)) ) )*y )dΓ + 
+    ∫( ( koff * ( MCA_b * w )*y ) )dΓ + ∫( ( λᵇ * ( ( MCA_b*MCA_b*MCA_b ) * w ) )*y )dΓ
+  bMCAb(w,MCA_u) = ∫( ( kon * ( MCA_u * w ) + λ/(π*R) * ( kon / (kon+koff) ) )*y )dΓ + mMCA(Δt,uh_MCAb_old,w)  
+
+  #Now for MCA unbound
+  # mass term for the temporal evolution MCA_b0
+  aMCAu(MCA_u,x,x_old,w) = mMCA(Δt,MCA_u,w) + 
+    ∫( ( kon * ( MCA_u * w ) )*y )dΓ + ∫( ( D * ( ∇ᵈ(MCA_u,nΓ)⋅∇ᵈ(w,nΓ) ) )*y )dΓ + 
+    ∫( ( w * ( ( (x-x_old) / Δt ) * (∇ᵈ(MCA_u,nΓ)⋅VectorValue(1.0,1.0)) + 
+          MCA_u * ( (∇ᵈ(x,nΓ)⋅VectorValue(1.0,1.0)) - (∇ᵈ(x_old,nΓ)⋅VectorValue(1.0,1.0)) ) / Δt ) )*y )dΓ  
+  bMCAu(w,MCA_b) = ∫( ( koff * (MCA_b*w) + λ/(π*R) * (koff/(kon+koff)) )*y )dΓ + mMCA(Δt,uh_MCAu_old,w) 
+
+  mMCA,aMCAb,bMCAb,aMCAu,bMCAu
+end
+
+function rha_rho_weak_forms(Δt,dᵃ,dᵇ,Drac,Drho,α,β,α₀v,β₀v,rho0,MCAbth,sig0,tenth,a_t,b_t,uh_rac_old,uh_rho_old,nΓ,dΓ,mMCA)
+  #DEFINING the equations for Rac and Rho
+  a_rac(rac,w,rho,MCA_b) = (1/dᵃ) * mMCA(Δt,rac,w) + 
+    ∫( ( Drac * (∇ᵈ(rac,nΓ)⋅∇ᵈ(w,nΓ)) )*y )dΓ + 
+    ∫( ( w*rac )*y )dΓ + ∫( ( w*rac * ( α₀v/(1+rho*rho) + α*((0.5 - threshold(MCA_b,rho0,MCAbth))) / (1+rho*rho) ) )*y )dΓ
+  b_rac(w,rho,MCA_b) = (1/dᵃ) * mMCA(Δt,uh_rac_old,w) + 
+    ∫( ( w*(a_t)*(α₀v/(1+rho*rho) + α*((0.5 - threshold(MCA_b,rho0,MCAbth)))/(1+rho*rho)) )*y )dΓ  
+ 
+  a_rho(rho,w,ten,rac) = (1/dᵇ)*mMCA(Δt,rho,w) + 
+    ∫( ( Drho * (∇ᵈ(rho,nΓ)⋅∇ᵈ(w,nΓ)) )*y )dΓ + 
+    ∫( ( w*rho )*y )dΓ + 
+    ∫( ( w*rho * ( β₀v/(1+rac*rac)))*y )dΓ + ∫( (w*rho*(β*threshold(ten,sig0,tenth)/(1+rac*rac) ) )*y )dΓ # +
+    # ∫( ( λʳᴬ*((rho*rho*rho)*w) )*y )dΓ  
+  b_rho(w,ten,rac) = (1/dᵇ)*mMCA(Δt,uh_rho_old,w) + ∫( ( w*b_t*(β₀v/(1+rac*rac)) + β*threshold(ten,sig0,tenth)/(1+rac*rac) )*y )dΓ
+
+  a_rac, b_rac, a_rho, b_rho
 end
 
 #function to run a single simulation with a few given parameters
 function run_mechanochemical_axisymmetric(χ,λ⁻²,η,T,Δt,part,
     L,simulation,wrac,αopto,βopto,kon,koff,M0,α₀,β₀,k,D,
-    σₐ₀,λᵇ,Drac,Drho,mTorc,rho0,ten0,a_t,b_t,α,β,dᵃ,dᵇ,sig0,tenth,λʳᴬ)
+    σₐ₀,λᵇ,Drac,Drho,rac0,rho0,ten0,a_t,b_t,α,β,dᵃ,dᵇ,
+    sig0,tenth,λʳᴬ,MCAbth,topto,vCTE)
 
   # Time discretisation parameters
   t₀  = 0.0
@@ -61,11 +103,11 @@ function run_mechanochemical_axisymmetric(χ,λ⁻²,η,T,Δt,part,
   #Starting Boundary conditions
   x₀ = 0
   xₗ = 0
-  diri_x(p) = p[1] < 0 ? x₀ : xₗ # x₀ on negative x coordinate, xₗ otherwise  
+  diri_x(p,x₀,xₗ) = p[1] < 0 ? x₀ : xₗ # x₀ on negative x coordinate, xₗ otherwise  
 
   v₀ = 0
   vₗ = 0
-  diri_v(p) = p[1] < 0 ? v₀ : vₗ # v₀ on negative x coordinate, vₗ otherwise  
+  diri_v(p,v₀,vₗ) = p[1] < 0 ? v₀ : vₗ # v₀ on negative x coordinate, vₗ otherwise  
 
   degree = 3 # Better for algoim quadratures
   # triangulate FE space
@@ -78,8 +120,8 @@ function run_mechanochemical_axisymmetric(χ,λ⁻²,η,T,Δt,part,
   # Creating FE space
   reffe = ReferenceFE(lagrangian,Float64,order)
   WD0 = TestFESpace(Ωᶜ,reffe;dirichlet_tags=["tag_5"])
-  X = TrialFESpace(WD0,diri_x)
-  V = TrialFESpace(WD0,diri_v)
+  X = TrialFESpace(WD0,p->diri_x(p,x₀,xₗ))
+  V = TrialFESpace(WD0,p->diri_v(p,v₀,vₗ))
 
   #Neumann and defining trial spaces and test space for MCA_b 
   Q0 = TestFESpace(Ωᶜ,reffe)
@@ -90,16 +132,21 @@ function run_mechanochemical_axisymmetric(χ,λ⁻²,η,T,Δt,part,
 
   #Building the vectors used for introducing opto influence as an increase in α and β
   arclength(x) = R * atan(x[2],-x[1]) # Arc length for sphere
-  α₀opto(x) = αopto * exp( -0.5 *   arclength(x)^2       / ((wrac)^2))
-  β₀opto(x) = βopto * exp( -0.5 * ( arclength(x)-π*R )^2 / ((wrac)^2))
+  α₀opto(x) = α₀
+  β₀opto(x) = β₀
+
+  α₀opto2(x) = α₀ + αopto * exp( -0.5 *   arclength(x)^2       / ((wrac)^2))
+  β₀opto2(x) = β₀ + βopto * exp( -0.5 * ( arclength(x)-π*R )^2 / ((wrac)^2))
   
-  γ₀ = 0.1 / h # TO-DO: Eric REVIEW's the scaling with h
+  γ₀ = 0.1 / h # TODO: Eric reviews the scaling with h
   m₀opto(u,v) = ∫( u*v )dΓ
   s₀opto(u,v) = ∫( γ₀*((nΓ⋅∇(u))⊙(nΓ⋅∇(v))) )dΩᶜ
 
   A₀opto(u,v) = m₀opto(u,v) + s₀opto(u,v)
   bα₀opto(v) = m₀opto(α₀opto,v)
   bβ₀opto(v) = m₀opto(β₀opto,v)
+  bα₀opto2(v) = m₀opto(α₀opto2,v)
+  bβ₀opto2(v) = m₀opto(β₀opto2,v)
 
   op_α₀ = AffineFEOperator(A₀opto,bα₀opto,Rac,Q0)
   op_β₀ = AffineFEOperator(A₀opto,bβ₀opto,Rho,Q0)
@@ -161,21 +208,8 @@ function run_mechanochemical_axisymmetric(χ,λ⁻²,η,T,Δt,part,
   aₓ(MCA_b,x,w) = ∫( ( (χ*MCA_b) * (x*w) / Δt )*y )dΓ + ∫( ( k * (∇ᵈ(x,nΓ)⋅∇ᵈ(w,nΓ)) )*y )dΓ
   bₓ(MCA_b,v,w) = ∫( ( χ*(MCA_b*v)*w )*y )dΓ
   
-  # Now for MAC bound
-  # mass term for the temporal evolution MCA_b
-  mMCA(Δt,MCA_b,w) = ∫( ( (MCA_b*w)/Δt )*y )dΓ
-  aMCAb(MCA_b,v,w) = mMCA(Δt,MCA_b,w) + ∫( ( 0.001 * (∇ᵈ(MCA_b,nΓ)⋅∇ᵈ(w,nΓ)) )*y )dΓ + 
-    ∫( ( w * ( v * (∇ᵈ(MCA_b,nΓ)⋅VectorValue(1.0,1.0)) + MCA_b * (∇ᵈ(v,nΓ)⋅VectorValue(1.0,1.0)) ) )*y )dΓ + 
-    ∫( ( koff * ( MCA_b * w )*y ) )dΓ + ∫( ( λᵇ * ( ( MCA_b*MCA_b*MCA_b ) * w ) )*y )dΓ
-  bMCAb(w,MCA_u) = ∫( ( kon * ( MCA_u * w ) + λ/(π*R) * ( kon / (kon+koff) ) )*y )dΓ + mMCA(Δt,uh_MCAb_old,w)  
-
-  #Now for MCA unbound
-  # mass term for the temporal evolution MCA_b0
-  aMCAu(MCA_u,x,x_old,w) = mMCA(Δt,MCA_u,w) + 
-    ∫( ( kon * ( MCA_u * w ) )*y )dΓ + ∫( ( D * ( ∇ᵈ(MCA_u,nΓ)⋅∇ᵈ(w,nΓ) ) )*y )dΓ + 
-    ∫( ( w * ( ( (x-x_old) / Δt ) * (∇ᵈ(MCA_u,nΓ)⋅VectorValue(1.0,1.0)) + 
-          MCA_u * ( (∇ᵈ(x,nΓ)⋅VectorValue(1.0,1.0)) - (∇ᵈ(x_old,nΓ)⋅VectorValue(1.0,1.0)) ) / Δt ) )*y )dΓ  
-  bMCAu(w,MCA_b) = ∫( ( koff * (MCA_b*w) + λ/(π*R) * (koff/(kon+koff)) )*y )dΓ + mMCA(Δt,uh_MCAu_old,w) 
+  mMCA,aMCAb,bMCAb,aMCAu,bMCAu = MCA_bound_unbound_weak_forms(
+    Δt,kon,koff,λᵇ,λ,R,D,uh_MCAb_old,uh_MCAu_old,nΓ,dΓ)
 
   #Now for v
   aᵥ(MCA_b,v,w) = ∫( ( η * (∇ᵈ(v,nΓ)⋅∇ᵈ(w,nΓ)) )*y )dΓ + ∫( ( (χ*MCA_b) * (v*w) )*y )dΓ
@@ -211,10 +245,8 @@ function run_mechanochemical_axisymmetric(χ,λ⁻²,η,T,Δt,part,
   uh_v=zero(V)
   
   #define the production rates as vectors so that we can have heterogeneous α and β due to mechanics
-  α₀v = zeros(num_qpoints)
-  α₀v[:] .= α₀
-  β₀v = zeros(num_qpoints)
-  β₀v[:] .= β₀
+  # α₀v = interpolate_everywhere(α₀,Rac) #zeros(num_qpoints) α₀v[:] .= α₀
+  # β₀v = interpolate_everywhere(β₀,Rho)#zeros(num_qpoints) β₀v[:] .= β₀
 
   #we define the tension for a spring
   perm=sortperm(flat_alenΓ) # Permutation to order by increasing arclength
@@ -222,37 +254,32 @@ function run_mechanochemical_axisymmetric(χ,λ⁻²,η,T,Δt,part,
   lx=lx[perm]
   x1=circshift(lx,1)
   tension=k*(lx-x1)/h 
-  splice!(tension,  1) 
+  splice!(tension,  1)
 
   vt[1,:] = vcat(lazy_map(uh_v,xΓ)...)
-  xt[1,:] = vcat(lazy_map(uh_x,xΓ)...)    
+  xt[1,:] = vcat(lazy_map(uh_x,xΓ)...)
   tensiont[1,:] = tension[:]
   #ten will be used in the computation of the model, we instill the Boundary Conditions and remove negative values
-  ten = zeros(num_qpoints, 1)
-  ten[1:end-1] = tension[:]
-  ten[end-1] = tension[end]
-  ten[end] = tension[end]
+  # ten = zeros(num_qpoints, 1)
+  # ten[1:end-1] = tension[:]
+  # ten[end-1] = tension[end]
+  # ten[end] = tension[end]
   
+  # Compute tension as a CellField, derivative of unknown
+  # TODO: Update in the temporal loop
+  __ten = ∇ᵈ(uh_x,nΓ)
+  _ten(x) = k * sign(cross(__ten(x),nΓ(x))) * norm(__ten(x))
+  ten = interpolate_everywhere(_ten,Q0)
+
   # #storing information of how alpha an beta behave spatially over time
   # for j in 1:1:(partition)
-  #   αt[1,j]= α₀v[j] + α*(0.5*(1-tanh((get_free_dof_values(uh_MCAb)[j])/rho0-MCAbth/rho0))) 
+  #   αt[1,j]= α₀v[j] + α*(0.5*(1-tanh((get_free_dof_values(uh_MCAb)[j])/rho0-MCAbth/rho0)))
   # end
-  # βt[1,:] = β₀v .+ β*threshold(ten,sig0,tenth) 
+  # βt[1,:] = β₀v .+ β*threshold(ten,sig0,tenth)
 
-  #DEFINING the equations for Rac and Rho
-  a_rac(rac,w,rho,MCA_b) = (1/dᵃ) * mMCA(Δt,rac,w) + 
-    ∫( ( Drac * (∇ᵈ(rac,nΓ)⋅∇ᵈ(w,nΓ)) )*y )dΓ + 
-    ∫( ( w*rac )*y )dΓ + ∫( ( w*rac * ( α₀v/(1+rho*rho) + α*(0.5*(1-tanh∘(MCA_b/rho0-MCAbth/rho0))) / (1+rho*rho) ) )*y )dΓ + 
-    ∫( ( mTorc*w*rac*threshold(ten,ten0,10) )*y )dΓ 
-  b_rac(w,rho,MCA_b) = (1/dᵃ) * mMCA(Δt,uh_rac_old,w) + 
-    ∫( ( w*(a_t)*(α₀v/(1+rho*rho) + α*(0.5*(1-tanh∘(MCA_b/rho0-MCAbth/rho0)))/(1+rho*rho)) )*y )dΓ  
- 
-  a_rho(rho,w,ten,rac) = (1/dᵇ)*mMCA(Δt,rho,w) + 
-    ∫( ( Drho * (∇ᵈ(rho,nΓ)⋅∇ᵈ(w,nΓ)) )*y )dΓ + 
-    ∫( ( w*rho )*y )dΓ + 
-    ∫( ( w*rho * ( β₀v/(1+rac*rac) + β*threshold(ten,sig0,tenth)/(1+rac*rac) ) )*y )dΓ +
-    ∫( ( λʳᴬ*((rho*rho*rho)*w) )*y )dΓ  
-  b_rho(w,ten,rac) = (1/dᵇ)*mMCA(Δt,uh_rho_old,w) + ∫( ( w*b_t*(β₀v/(1+rac*rac) + β*threshold(ten,sig0,tenth)/(1+rac*rac)) )*y )dΓ  
+  a_rac, b_rac, a_rho, b_rho = rha_rho_weak_forms(
+    Δt,dᵃ,dᵇ,Drac,Drho,α,β,α₀v,β₀v,rho0,MCAbth,sig0,
+    tenth,a_t,b_t,uh_rac_old,uh_rho_old,nΓ,dΓ,mMCA)
  
   #SOLVE Rac AT t=0
   Arac(rac,w) = a_rac(rac,w,uh_rho,uh_MCAb)
@@ -264,13 +291,13 @@ function run_mechanochemical_axisymmetric(χ,λ⁻²,η,T,Δt,part,
   Arho(rho,w) = a_rho(rho,w,ten,uh_rac)
   Brho(w) = b_rho(w,ten,uh_rac)
   op_rho = AffineFEOperator(Arho,Brho,Rho,Q0)
-  uh_rho = solve(op_rho)
+  uh_rho = solve(op_rho) 
   uh_rho_old = uh_rho
 
   i = 0
   t=0
   dummyx0=0
- #give steady state as initial conditions for rac and rho 
+  # give steady state as initial conditions for rac and rho 
   for ti in 1:250
     op_rac = AffineFEOperator(Arac,Brac,Rac,Q0)
     uh_rac = solve(op_rac)
@@ -279,106 +306,109 @@ function run_mechanochemical_axisymmetric(χ,λ⁻²,η,T,Δt,part,
     uh_rho = solve(op_rho)
     uh_rho_old = uh_rho
   end
-  #threshold value to start protrusion, 1.3 times the initial condition
-  racth = 1.3*get_free_dof_values(uh_rac)[1] 
-
+  # threshold value to start protrusion, 1.3 times the initial condition 
+  racaux=vcat(lazy_map(uh_rac,xΓ)...)
+  racaux=racaux[perm]
+  racth = 1.3*racaux[1] 
   
   ract[1,:] = vcat(lazy_map(uh_rac,xΓ)...)
   rhot[1,:] = vcat(lazy_map(uh_rho,xΓ)...)
   
-  writevtk(Ω,pVTU*"VTU$i",cellfields=["x"=>uh_x,"v"=>uh_v,"rho"=>uh_MCAb,"rho0"=>uh_MCAu]) 
-  for ti in t₀:Δt:(T-Δt)
+  writevtk(Ωᶜ,pVTU*"VTU$i",cellfields=["x"=>uh_x,"v"=>uh_v,"rho"=>uh_MCAb,"rho0"=>uh_MCAu,"f"=>φ.φ]) 
+ for ti in t₀:Δt:(T-Δt)
     #HERE WE DEFINE WHETHER THE CODE IS FRONT TO BACK OR BACK TO FRONT, DEPENDING IN WHERE WE ACTIVATE OPTO
-#     if t==topto
-#       α₀v[:] .= α₀ .+ α₀opto[:]
-#       β₀v[:] .= β₀ .+ β₀opto[:]
-#     end
-#     if t==3*topto #at time=3*topto a while the input dies down
-#       α₀v[:] .= α₀
-#       β₀v[:] .= β₀ 
-#     end
-#     i1 = sum(∫(uh_MCAb)dΓ)
-#     i2 = sum(∫(uh_MCAu)dΓ)
-#     λ = conservation(i2,i1,Minitial)
-#     i3 = i1+i2
-#     i4 = trunc(t)
-#     i = i + 1
-#     t = t + Δt  
+    if t==topto 
+      op_α₀ = AffineFEOperator(A₀opto,bα₀opto2,Rac,Q0)
+      op_β₀ = AffineFEOperator(A₀opto,bβ₀opto2,Rho,Q0)
 
-#     #boundary conditions for v and x
-#     rac1=get_free_dof_values(uh_rac)[1]
-#     vCTErac = vCTE*threshold(rac1,rac0,racth)#velocity polimerization
-#     v₀ = vCTErac/(1+ten[1]*ten[1]/ten0)
-#     #we introduce a slight relaxation for the membrane, decreases 2% x at the Boundary condition only
-#     dummyx0=dummyx0*0.98+Δt*vCTErac/(1+ten[1]*ten[1]/ten0)
-#     x₀ = dummyx0
-#     X = TrialFESpace(WD0,[x₀,xₗ])
+      α₀v = solve(op_α₀)
+      β₀v = solve(op_β₀)
+    end
+    if t==3*topto #at time=3*topto a while the input dies down
+      op_α₀ = AffineFEOperator(A₀opto,bα₀opto,Rac,Q0)
+      op_β₀ = AffineFEOperator(A₀opto,bβ₀opto,Rho,Q0)
 
-#     @info "Time step $i/$nΔt, time $i4, sum(MCA_b+MCA_u) $i3"
-#     Mt[i]=i3
+      α₀v = solve(op_α₀)
+      β₀v = solve(op_β₀)
+    end
+    i1 = ∑(∫(uh_MCAb)dΓ)
+    i2 = ∑(∫(uh_MCAu)dΓ)
+    λ = conservation(i2,i1,Minitial)
+    i3 = i1+i2
+    i4 = trunc(t)
+    i = i + 1
+    t = t + Δt  
 
-#     MCAbt[i+1,:] = get_free_dof_values(uh_MCAb)[:]
-#     MCAut[i+1,:] = get_free_dof_values(uh_MCAu)[:]
-#     ract[i+1,:] = get_free_dof_values(uh_rac)[:]
-#     rhot[i+1,:] = get_free_dof_values(uh_rho)[:]
+    #boundary conditions for v and x
+    racaux=vcat(lazy_map(uh_rac,xΓ)...)
+    racaux=racaux[perm] 
+    rac1=racaux[1]
+    tenaux=vcat(lazy_map(ten,xΓ)...)
+    tenaux=tenaux[perm] 
+    ten1=tenaux[1]
+    vCTErac = vCTE*threshold2(rac1,rac0,racth)#velocity polimerization
+    v₀ = vCTErac/(1+ten1*ten1/ten0) 
+    #we introduce a slight relaxation for the membrane, decreases 2% x at the Boundary condition only
+    dummyx0=dummyx0*0.98+Δt*vCTErac/(1+ten1*ten1/ten0)
+    x₀ = dummyx0
+    X = TrialFESpace(WD0,p->diri_x(p,x₀,xₗ))
 
-#     # Updating v to solve MCAb and x
-#     A(x,w) = m(uh_MCAb,Δt,x,w) + a(k,x,w)
-#     B(w) = m(uh_MCAb,Δt,uh_x,w) + bₓ(uh_MCAb,uh_v,w) 
-#     op_x = AffineFEOperator(A,B,X,WD0)
-#     uh_x = solve(op_x)
+    @info "Time step $i/$nΔt, time $i4, sum(MCA_b+MCA_u) $i3"
+    Mt[i]=i3
 
-#     po=get_free_dof_values(uh_MCAb)
-#     pa=get_free_dof_values(uh_rac)
-#     paa=get_free_dof_values(uh_rho)
-#     poo = get_free_dof_values(uh_MCAu)
+      MCAbt[1,:] = vcat(lazy_map(uh_MCAb,xΓ)...)
+      MCAut[1,:] = vcat(lazy_map(uh_MCAu,xΓ)...)
+      ract[1,:] = vcat(lazy_map(uh_rac,xΓ)...)
+      rhot[1,:] = vcat(lazy_map(uh_rho,xΓ)...)
 
-#     op_MCAb= AffineFEOperator(AMCAb,BMCAb,RHO,Q0)
-#     uh_MCAb=solve(op_MCAb)
-#     uh_MCAb_old=uh_MCAb
+    # Updating v to solve MCAb and x
+    A(x,w) = m(uh_MCAb,Δt,x,w) + a(k,x,w)
+    B(w) = m(uh_MCAb,Δt,uh_x,w) + bₓ(uh_MCAb,uh_v,w) 
+    op_x = AffineFEOperator(A,B,X,WD0)
+    uh_x = solve(op_x)
+
+    po=get_free_dof_values(uh_MCAb)
+    pa=get_free_dof_values(uh_rac)
+    paa=get_free_dof_values(uh_rho)
+    poo = get_free_dof_values(uh_MCAu)
+
+    op_MCAb= AffineFEOperator(AMCAb,BMCAb,RHO,Q0)
+    uh_MCAb=solve(op_MCAb)
+    uh_MCAb_old=uh_MCAb
   
-#     op_MCAu= AffineFEOperator(AMCAu,BMCAu,RHO0,Q0)
-#     uh_MCAu=solve(op_MCAu)
-#     uh_MCAu_old=uh_MCAu
- 
-#     V = TrialFESpace(WD0,[v₀,vₗ])
-#     op_v= AffineFEOperator(Aᵥ,Bᵥ,V,WD0)
-#     uh_v=solve(op_v)
-
-#     a_sum = sum(pa) 
-#     op_rac = AffineFEOperator(Arac,Brac,Rac,Q0)
-#     uh_rac = solve(op_rac)
-#     uh_rac_old = uh_rac
+    op_MCAu= AffineFEOperator(AMCAu,BMCAu,RHO0,Q0)
+    uh_MCAu=solve(op_MCAu)
+    uh_MCAu_old=uh_MCAu
     
-#     b_sum = sum(paa) 
-#     op_rho = AffineFEOperator(Arho,Brho,Rho,Q0)
-#     uh_rho = solve(op_rho)
-#     uh_rho_old = uh_rho
+    V = TrialFESpace(WD0,p->diri_v(p,v₀,vₗ))
+    op_v= AffineFEOperator(Aᵥ,Bᵥ,V,WD0)
+    uh_v=solve(op_v)
 
-#     #updating x_old per time derivarive
-#     uh_x_old =  uh_x
-#     writevtk(Ω,pVTU*"VTU$i",cellfields=["x"=>uh_x,"v"=>uh_v,"rho"=>uh_MCAb,"rho0"=>uh_MCAu])
+    #a_sum = sum(pa) 
+    op_rac = AffineFEOperator(Arac,Brac,Rac,Q0)
+    uh_rac = solve(op_rac)
+    uh_rac_old = uh_rac
+    
+    #b_sum = sum(paa) 
+    op_rho = AffineFEOperator(Arho,Brho,Rho,Q0)
+    uh_rho = solve(op_rho)
+    uh_rho_old = uh_rho
 
-#     plotting("MCA_b",po,pPNG*"ezrin_time/","$i")
-#     plotting("rac",pa,pPNG*"Rac_time/","$i")
-#     plotting("rho",paa,pPNG*"Rho_time/","$i")
-#     plotting("MCA_u",poo,pPNG*"ezrin_unbound_time/","$i")
+    #updating x_old per time derivarive
+    uh_x_old =  uh_x
+    writevtk(Ωᶜ,pVTU*"VTU$i",cellfields=["x"=>uh_x,"v"=>uh_v,"rho"=>uh_MCAb,"rho0"=>uh_MCAu,"f"=>φ.φ])
 
-#     lx=get_free_dof_values(uh_x)
-#     x1=circshift(lx,1)
-#     tension=k*(lx-x1)/h
-#     splice!(tension,  1)
-#     ten[1:end-2] = tension[:]
-#     ten[end-1] = tension[end]
-#     ten[end] = tension[end] 
-#     vt[i+1,:] = get_free_dof_values(uh_v)[:]
-#     xt[i+1,:] = get_free_dof_values(uh_x)[:]
-#     tensiont[i+1,:] = tension[:]
-#     βt[i+1,:] = β₀v .+ β*threshold(ten,sig0,tenth) 
-#     for j in 1:1:(partition)
-#       αt[i+1,j] = α₀v[j] + α*(0.5*(1-tanh((get_free_dof_values(uh_MCAb)[j])/rho0-MCAbth/rho0))) 
-#     end
+
+    ten = interpolate_everywhere(_ten,Q0)
+  vt[i+1,:] = vcat(lazy_map(uh_v,xΓ)...)
+  xt[i+1,:] = vcat(lazy_map(uh_x,xΓ)...)
+  # tensiont[i+1,:] = tension[:] 
+  #   βt[i+1,:] = β₀v .+ β*threshold(ten,sig0,tenth) 
+  #   for j in 1:1:(partition)
+  #     αt[i+1,j] = α₀v[j] + α*(0.5*(1-tanh((get_free_dof_values(uh_MCAb)[j])/rho0-MCAbth/rho0))) 
+  #   end
   end 
   # plots_run(nΔt,h,vt,xt,tensiont,MCAbt,MCAut,ract,rhot,Mt,λ⁻²,pPNG,α, β, dᵃ, dᵇ,αt,βt,αopto,βopto,topto)
-  # return tensiont,MCAbt,vt,ract,rhot,αt,βt
+  return tensiont,MCAbt,vt,ract,rhot,αt,βt
+  print("finish line")
 end
