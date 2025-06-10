@@ -1,8 +1,11 @@
+
+using Plots
+using Plots.PlotMeasures
 #plots for the simulations that do heatmap
 function plots_heat(time,α₀,β₀,nΔt,Δx,vt,xt,tensiont,ρt,ρ0t,ract,rhot,Mt,λ⁻²,pPNG,α, β, dᵃ, dᵇ,αt,βt)
-  xplotp1 = range(0, L, length=partition+1)
-  xplotm1 = range(0, L, length=partition-1)
-  xplotm2 = range(0, L, length=partition-2)  
+  xplot = range(0, L, length=partition+1)
+  xplot = range(0, L, length=partition-1)
+  xplot = range(0, L, length=partition-2)  
 
   n=18
   plot_lines =  trunc(Int,time/(n-8))
@@ -10,7 +13,7 @@ function plots_heat(time,α₀,β₀,nΔt,Δx,vt,xt,tensiont,ρt,ρ0t,ract,rhot,
     plot_lines=1
   end
   vplot=vt[1:plot_lines:time,:]
-  p1 = plot(xplotm1,transpose(vplot), legend=false,color = :haline, line_z = (1:n)',size=(300, 220), margin = 5px, alpha = 0.9, framestyle = :box)
+  p1 = plot(xplot,transpose(vplot), legend=false,color = :haline, line_z = (1:n)',size=(300, 220), margin = 5px, alpha = 0.9, framestyle = :box)
   #plot!(cbar=true)
   # ylims!(0, Ntot/L)
   xlabel!("Cell perimeter (μm)")
@@ -18,14 +21,14 @@ function plots_heat(time,α₀,β₀,nΔt,Δx,vt,xt,tensiont,ρt,ρ0t,ract,rhot,
   # plot!(legend=:topright, legendcolumns=3)
 
   ρtplot=ρt[5:plot_lines:time,:]
-  p2 = plot(xplotp1,transpose(ρtplot), legend=false, color = :haline, line_z = (1:n)',size=(300, 220), margin = 5px,linealpha=0.9,linewidth=1, framestyle = :box)
+  p2 = plot(xplot,transpose(ρtplot), legend=false, color = :haline, line_z = (1:n)',size=(300, 220), margin = 5px,linealpha=0.9,linewidth=1, framestyle = :box)
   ylims!(0.045, 0.12)
   xlabel!("Cell perimeter (μm)")
   ylabel!("MCA protein")
   # plot!(legend=:topright, legendcolumns=3)
  
   xxplot=xt[1:plot_lines:time,:] 
-  p4 = plot(xplotm1,transpose(xxplot), legend=false, color = :haline, line_z = (1:n)',size=(300, 220), margin = 5px,linealpha=0.8, framestyle = :box)
+  p4 = plot(xplot,transpose(xxplot), legend=false, color = :haline, line_z = (1:n)',size=(300, 220), margin = 5px,linealpha=0.8, framestyle = :box)
   # ylims!(0, Ntot/L)
   plot!(cbar=true)
   xlabel!("Cell perimeter (μm)")
@@ -33,100 +36,100 @@ function plots_heat(time,α₀,β₀,nΔt,Δx,vt,xt,tensiont,ρt,ρ0t,ract,rhot,
   # plot!(legend=:topright, legendcolumns=3)
     
   tensiontplot=tensiont[6:plot_lines:time,:]
-  p3 = plot(xplotm2,transpose(tensiontplot), legend=false,color =:haline, line_z = (1:n+1)',size=(300, 220), margin = 5px, framestyle = :box)
+  p3 = plot(xplot,transpose(tensiontplot), legend=false,color =:haline, line_z = (1:n+1)',size=(300, 220), margin = 5px, framestyle = :box)
   #ylims!(1, 11)
   xlabel!("Cell perimeter (μm)")
   ylabel!("σ[pN/μm]")
   # plot!(legend=:topright, legendcolumns=3)
 
   ractplot=ract[:4:plot_lines:time,:]
-  p5 = plot(xplotp1,transpose(ractplot), legend=false,color =:haline, line_z = (1:n)',size=(300, 220), margin = 5px,linewidth=1, framestyle = :box)
+  p5 = plot(xplot,transpose(ractplot), legend=false,color =:haline, line_z = (1:n)',size=(300, 220), margin = 5px,linewidth=1, framestyle = :box)
   # ylims!(0, Ntot/L)
   xlabel!("Cell perimeter (μm)")
   ylabel!("Rac a")
   # plot!(legend=:topright, legendcolumns=3)
 
   rhotplot=rhot[:4:plot_lines:time,:]
-  p6 =plot(xplotp1,transpose(rhotplot), legend=false,color =:haline, line_z = (1:n)',size=(300, 220), margin = 5px,linewidth=1, framestyle = :box)
+  p6 =plot(xplot,transpose(rhotplot), legend=false,color =:haline, line_z = (1:n)',size=(300, 220), margin = 5px,linewidth=1, framestyle = :box)
   # ylims!(0, Ntot/L)
   xlabel!("Cell perimeter (μm)")
   ylabel!("Rho b")
   # plot!(legend=:topright, legendcolumns=3)
 
   λ=trunc(sqrt(1/λ⁻²),digits=2)
-  plot(p1, p2, p5,p4,p3,p6, layout = 6, plot_title="t2s=$time s λ=$λ τₑ=$τₑ τₐ=$τₐ vp=$vCTE   σ₀=$ten0 ρ₀=$rho0 α=$α β=$β dₐ=$dᵃ dᵦ=$dᵇ",plot_titlefontsize=10,size=(1200, 600))
+  plot(p1, p2, p5,p4,p3,p6, layout = 6, plot_title="t2s=$time s λ=$λ k=$k η=$η σₐ₀=$σₐ₀ vp=$vCTE   σ₀=$ten0 ρ₀=$rho0 α=$α β=$β dₐ=$dᵃ dᵦ=$dᵇ",plot_titlefontsize=10,size=(1200, 600))
   savefig(pPNG*"alpha=$α₀ beta=$β₀.png") 
 end
 
 #standard array of plots for standard simulation
-function plots_run(nΔt,Δx,vt,xt,tensiont,ρt,ρ0t,ract,rhot,Mt,λ⁻²,pPNG,pRac, pRho, koffrac, koffrho,αt,βt,αopto,βopto,topto)
-  xplotp1 = range(0, L, length=partition+1)
-  xplotm1 = range(0, L, length=partition-1)
-  xplotm2 = range(0, L, length=partition-2)
-  xplot = range(0, L, length=partition)
+function plots_run(nΔt,Δx,vt,xt,tensiont,ρt,ρ0t,ract,rhot,Mt,λ⁻²,
+  pPNG,α, β, koffrac, koffrho,αt,βt,αopto,βopto,topto,partition,
+  L,Δt,T,k, η, σₐ₀, vCTE, ten0, rho0,α₀,β₀,xplot) 
+  #xplot = range(0, L, length=partition)
   tplot = range(0, T, length=(trunc(Int,T/Δt)+1))
-  ract_mirror = zeros((trunc(Int,T/Δt)+1),partition*2+2)
-  MCAt_mirror = zeros((trunc(Int,T/Δt)+1),partition*2+2)
-  rhot_mirror = zeros((trunc(Int,T/Δt)+1),partition*2+2)
-  tent_mirror = zeros((trunc(Int,T/Δt)+1),partition*2-4)
-  x2plotp1 = range(-L, L, length=partition*2+2)
-  x2plotm2 = range(-L, L, length=partition*2-4)
+  ract_mirror = zeros((trunc(Int,T/Δt)+1),partition*2)
+  MCAt_mirror = zeros((trunc(Int,T/Δt)+1),partition*2)
+  rhot_mirror = zeros((trunc(Int,T/Δt)+1),partition*2)
+  tent_mirror = zeros((trunc(Int,T/Δt)+1),partition*2)
+  x2plot = range(-L, L, length=partition*2) 
 
   for i in 1:1:(trunc(Int,T/Δt)+1)
-    for j in 1:1:(partition+1)
-      ract_mirror[i,j]=ract[i,partition+2-j]
-      ract_mirror[i,2*partition+3-j]=ract[i,partition+2-j]
-      rhot_mirror[i,j]=rhot[i,partition+2-j]
-      rhot_mirror[i,2*partition+3-j]=rhot[i,partition+2-j]
-      MCAt_mirror[i,j]=ρt[i,partition+2-j]
-      MCAt_mirror[i,2*partition+3-j]=ρt[i,partition+2-j]
+    for j in 1:1:(partition)
+      ract_mirror[i,j]=ract[i,partition-j+1]
+      ract_mirror[i,2*partition+1-j]=ract[i,partition-j+1]
+      rhot_mirror[i,j]=rhot[i,partition-j+1]
+      rhot_mirror[i,2*partition+1-j]=rhot[i,partition-j+1]
+      MCAt_mirror[i,j]=ρt[i,partition-j+1]
+      MCAt_mirror[i,2*partition+1-j]=ρt[i,partition-j+1]
     end 
-    for j in 1:1:(partition-2) 
-      tent_mirror[i,j]=tensiont[i,partition-1-j]
-      tent_mirror[i,2*partition-3-j]=tensiont[i,partition-1-j]
+    for j in 1:1:(partition) 
+      tent_mirror[i,j]=tensiont[i,partition-j+1]
+      tent_mirror[i,2*partition-j]=tensiont[i,partition-j+1]
       
     end
   end
-  heatmap(tplot,x2plotp1,transpose(MCAt_mirror), clim=(0.055 ,0.095),  size=(250, 220),margin=15px, plot_title="MCA protein",plot_titlefontsize=10, framestyle = :box)
+  heatmap(tplot,x2plot,transpose(MCAt_mirror),  size=(250, 220),margin=15px, plot_title="MCA protein",plot_titlefontsize=10, framestyle = :box)
   # ylims!(0, Ntot/L)
   xlabel!("time (sec)")
   ylabel!("Cell perimeter (μm)")
   # plot!(legend=:topright, legendcolumns=3)
   savefig(pPNG*"kymo_MCA_mi.pdf")
 
-  heatmap(tplot,x2plotm2,transpose(tent_mirror),  size=(250, 220),margin=15px, plot_title="σ",plot_titlefontsize=10, framestyle = :box)
+  heatmap(tplot,x2plot,transpose(tent_mirror),  size=(250, 220),margin=15px, plot_title="σ",plot_titlefontsize=10, framestyle = :box)
   # ylims!(0, Ntot/L)
   xlabel!("time (sec)")
   ylabel!("Cell perimeter (μm)")
   # plot!(legend=:topright, legendcolumns=3)
   savefig(pPNG*"kymo_ten_mi.pdf")
   
-  mi = minimum(ract_mirror[:,:]./ract_mirror[Int32(topto*4/5),50])
-  ma = maximum(ract_mirror[:,:]./ract_mirror[Int32(topto*4/5),50])
-  heatmap(tplot,x2plotp1,transpose(ract_mirror./ract_mirror[30,50]), clim=(1.0*mi ,1.3 ),  size=(250, 220),margin=15px, plot_title="Rac",plot_titlefontsize=10, framestyle = :box)
+  # mi = minimum(ract_mirror[:,:]./ract_mirror[Int32(topto*4/5),50])
+  # ma = maximum(ract_mirror[:,:]./ract_mirror[Int32(topto*4/5),50])
+  # heatmap(tplot,x2plot,transpose(ract_mirror./ract_mirror[30,50]), clim=(1.0*mi ,1.3 ),  size=(250, 220),margin=15px, plot_title="Rac",plot_titlefontsize=10, framestyle = :box)
+  heatmap(tplot,x2plot,transpose(ract_mirror),  size=(250, 220),margin=15px, plot_title="Rac",plot_titlefontsize=10, framestyle = :box)
   # ylims!(0, Ntot/L)
   xlabel!("time (sec)")
   ylabel!("Cell perimeter (μm)")
   # plot!(legend=:topright, legendcolumns=3)
   savefig(pPNG*"kymo_rac_mi.pdf")
 
-  heatmap(tplot,xplotp1,transpose(ract),  size=(250, 220),margin=15px, plot_title="Rac",plot_titlefontsize=10, framestyle = :box)
+  heatmap(tplot,xplot,transpose(ract),  size=(250, 220),margin=15px, plot_title="Rac",plot_titlefontsize=10, framestyle = :box)
   # ylims!(0, Ntot/L)
   xlabel!("time (sec)")
   ylabel!("Cell perimeter (μm)")
   # plot!(legend=:topright, legendcolumns=3)
   savefig(pPNG*"kymo_rac.pdf")
 
-  mi =  minimum(rhot_mirror[:,:]./rhot_mirror[Int32(topto*4/5),50])
-  ma = maximum(rhot_mirror[:,:]./rhot_mirror[Int32(topto*4/5),50])
-  heatmap(tplot,x2plotp1,transpose(rhot_mirror./rhot_mirror[30,50]), clim=(1*mi, (1/(βopto/2+1))*ma ),  size=(250, 220),margin=15px, plot_title="Rho",plot_titlefontsize=10, framestyle = :box)
+  # mi =  minimum(rhot_mirror[:,:]./rhot_mirror[Int32(topto*4/5),50])
+  # ma = maximum(rhot_mirror[:,:]./rhot_mirror[Int32(topto*4/5),50])heatmap(tplot,x2plot,transpose(rhot_mirror./rhot_mirror[30,50]), clim=(1*mi, (1/(βopto/2+1))*ma ),  size=(250, 220),margin=15px, plot_title="Rho",plot_titlefontsize=10, framestyle = :box)
+  #heatmap(tplot,x2plot,transpose(rhot_mirror./rhot_mirror[30,50]), clim=(1*mi, (1/(βopto/2+1))*ma ),  size=(250, 220),margin=15px, plot_title="Rho",plot_titlefontsize=10, framestyle = :box)
+  heatmap(tplot,x2plot,transpose(rhot_mirror),  size=(250, 220),margin=15px, plot_title="Rho",plot_titlefontsize=10, framestyle = :box)
   # ylims!(0, Ntot/L)
   xlabel!("time (sec)")
   ylabel!("Cell perimeter (μm)")
   # plot!(legend=:topright, legendcolumns=3)
   savefig(pPNG*"kymo_rho_mirror.pdf")
 
-  heatmap(tplot,xplotp1,transpose(rhot),  size=(250, 220),margin=15px, plot_title="Rho",plot_titlefontsize=10, framestyle = :box)
+  heatmap(tplot,xplot,transpose(rhot),  size=(250, 220),margin=15px, plot_title="Rho",plot_titlefontsize=10, framestyle = :box)
   # ylims!(0, Ntot/L)
   xlabel!("time (sec)")
   ylabel!("Cell perimeter (μm)")
@@ -137,7 +140,7 @@ function plots_run(nΔt,Δx,vt,xt,tensiont,ρt,ρ0t,ract,rhot,Mt,λ⁻²,pPNG,pR
   plot_lines =  trunc(Int,nΔt/(n-8))
 
   vplot=vt[1:plot_lines:end,:]
-  p1 = plot(xplotm1,transpose(vplot), legend=false,color = :berlin, line_z = (1:n)',size=(300, 220), margin = 5px, alpha = 0.9, framestyle = :box)
+  p1 = plot(xplot,transpose(vplot), legend=false,color = :berlin, line_z = (1:n)',size=(300, 220), margin = 5px, alpha = 0.9, framestyle = :box)
   #plot!(cbar=true)
   # ylims!(0, Ntot/L)
   xlabel!("Cell perimeter (μm)")
@@ -146,8 +149,8 @@ function plots_run(nΔt,Δx,vt,xt,tensiont,ρt,ρ0t,ract,rhot,Mt,λ⁻²,pPNG,pR
   savefig(pPNG*"vt.pdf")
 
   ρtplot=ρt[5:plot_lines:end,:]
-  p2 = plot(xplotp1,transpose(ρtplot), legend=false, color = :haline, line_z = (1:n)',size=(300, 220), margin = 5px,linealpha=0.9,linewidth=1, framestyle = :box)
-  ylims!(0.045, 0.12)
+  p2 = plot(xplot,transpose(ρtplot), legend=false, color = :haline, line_z = (1:n)',size=(300, 220), margin = 5px,linealpha=0.9,linewidth=1, framestyle = :box)
+  #ylims!(0.045, 0.12)
   xlabel!("Cell perimeter (μm)")
   ylabel!("MCA protein")
   # plot!(legend=:topright, legendcolumns=3)
@@ -157,16 +160,16 @@ function plots_run(nΔt,Δx,vt,xt,tensiont,ρt,ρ0t,ract,rhot,Mt,λ⁻²,pPNG,pR
   xxplot=xt[1:plot_lines:end,:]
  # print("\n")
   #print(xxplot)
-  p4 = plot(xplotm1,transpose(xxplot), legend=false, color = :haline, line_z = (1:n)',size=(300, 220), margin = 5px,linealpha=0.8, framestyle = :box)
+  p4 = plot(xplot,transpose(xxplot), legend=false, color = :haline, line_z = (1:n)',size=(300, 220), margin = 5px,linealpha=0.8, framestyle = :box)
   # ylims!(0, Ntot/L)
-  plot!(cbar=true)
+  #plot!(cbar=true)
   xlabel!("Cell perimeter (μm)")
   ylabel!("x[μm]")
   # plot!(legend=:topright, legendcolumns=3)
   savefig(pPNG*"xt.pdf")
     
   tensiontplot=tensiont[6:plot_lines:end,:]
-  p3 = plot(xplotm2,transpose(tensiontplot), legend=false,color =:haline, line_z = (1:n+1)',size=(300, 220), margin = 5px, framestyle = :box)
+  p3 = plot(xplot,transpose(tensiontplot), legend=false,color =:haline, line_z = (1:n+1)',size=(300, 220), margin = 5px, framestyle = :box)
   #ylims!(1, 11)
   xlabel!("Cell perimeter (μm)")
   ylabel!("σ[pN/μm]")
@@ -174,7 +177,7 @@ function plots_run(nΔt,Δx,vt,xt,tensiont,ρt,ρ0t,ract,rhot,Mt,λ⁻²,pPNG,pR
   savefig(pPNG*"tensiont.pdf") 
 
   ractplot=ract[:2:plot_lines:end,:]
-  p5 = plot(xplotp1,transpose(ractplot), legend=false,color =cgrad(:matter, rev=true), line_z = (1:n)',size=(300, 220), margin = 5px,linewidth=1, framestyle = :box)
+  p5 = plot(xplot,transpose(ractplot), legend=false,color =cgrad(:matter, rev=true), line_z = (1:n)',size=(300, 220), margin = 5px,linewidth=1, framestyle = :box)
   # ylims!(0, Ntot/L)
   xlabel!("Cell perimeter (μm)")
   ylabel!("Rac a")
@@ -182,7 +185,7 @@ function plots_run(nΔt,Δx,vt,xt,tensiont,ρt,ρ0t,ract,rhot,Mt,λ⁻²,pPNG,pR
   savefig(pPNG*"ract.pdf")
 
   rhotplot=rhot[:2:plot_lines:end,:]
-  p6 =plot(xplotp1,transpose(rhotplot), legend=false,color =cgrad(:matter, rev=true), line_z = (1:n)',size=(300, 220), margin = 5px,linewidth=1, framestyle = :box)
+  p6 =plot(xplot,transpose(rhotplot), legend=false,color =cgrad(:matter, rev=true), line_z = (1:n)',size=(300, 220), margin = 5px,linewidth=1, framestyle = :box)
   # ylims!(0, Ntot/L)
   xlabel!("Cell perimeter (μm)")
   ylabel!("Rho b")
@@ -191,7 +194,7 @@ function plots_run(nΔt,Δx,vt,xt,tensiont,ρt,ρ0t,ract,rhot,Mt,λ⁻²,pPNG,pR
   α2= trunc(α,digits=2)
   β2= trunc(β,digits=2)
   λ=trunc(sqrt(1/λ⁻²),digits=2)
-  plot(p1, p2, p5,p4,p3,p6, layout = 6, plot_title="T=$T s λ=$λ τₑ=$τₑ τₐ=$τₐ vp=$vCTE   σ₀=$ten0 ρ₀=$rho0 α=$α2 β=$β2 dₐ=$dᵃ dᵦ=$dᵇ",plot_titlefontsize=10,size=(800, 400))
+  plot(p1, p2, p5,p4,p3,p6, layout = 6, plot_title="T=$T s λ=$λ k=$k η=$η σₐ₀=$σₐ₀ vp=$vCTE   σ₀=$ten0 ρ₀=$rho0 α=$α2 β=$β2 dₐ=$koffrac dᵦ=$koffrho",plot_titlefontsize=10,size=(800, 400))
   savefig(pPNG*"all.pdf") 
    
   ractplot=ract[:,1]./ract[1,1]
@@ -212,7 +215,7 @@ function plots_run(nΔt,Δx,vt,xt,tensiont,ρt,ρ0t,ract,rhot,Mt,λ⁻²,pPNG,pR
   # plot!(legend=:topright, legendcolumns=3)
   savefig(pPNG*"rho_2.pdf")
   
-  myarray=open(readdlm,"a_betavsalpha_diagram.txt")
+  myarray=open(readdlm,"./examples/Mechanochemical/a_betavsalpha_diagram.txt")
   x = myarray[:,1]
   y = myarray[:,2]
   plot((βt[:2:plot_lines:end,:,end]),(αt[:2:plot_lines:end,:,1]), seriestype=:scatter ,markerstrokewidth=0,  markersize = 0.6, legend=false,markercolor =cgrad(:matter, rev=true),size=(300, 220), margin = 1px, framestyle = :box)
@@ -270,28 +273,28 @@ function plots_run(nΔt,Δx,vt,xt,tensiont,ρt,ρ0t,ract,rhot,Mt,λ⁻²,pPNG,pR
   savefig(pPNG*"Mt.pdf")
 
   ρtplot=ρ0t[:1:plot_lines:end,:]
-  plot(xplotp1,transpose(ρtplot), legend=false,palette = :hawaii25,size=(300, 220), margin = 5px,linealpha=0.3,linewidth=1)
+  plot(xplot,transpose(ρtplot), legend=false,palette = :hawaii25,size=(300, 220), margin = 5px,linealpha=0.3,linewidth=1)
   # ylims!(0, Ntot/L)
   xlabel!("Cell perimeter (μm)")
   ylabel!("ρ_u")
   # plot!(legend=:topright, legendcolumns=3)
   savefig(pPNG*"rho0t.pdf")
   
-  plot(xplotp1, [ρ0t[end,:], ρt[end,:]], label=["ρ_u(ξ,t=$T)" "ρ_b(ξ,t=$T)"],size=(300, 200),  margin = 5px, linewidth=1)
+  plot(xplot, [ρ0t[end,:], ρt[end,:]], label=["ρ_u(ξ,t=$T)" "ρ_b(ξ,t=$T)"],size=(300, 200),  margin = 5px, linewidth=1)
   # ylims!(0, Ntot/L)
   xlabel!("Cell perimeter (μm)")
   ylabel!("MCA (t=$T)")
   # plot!(legend=:topright, legendcolumns=3)
   savefig(pPNG*"rho.pdf")
   
-  plot(xplotp1, [ρ0t[1,:], ρt[1,:]], label=["ρ_u(ξ,t=1)" "ρ_b(ξ,t=1)"],size=(300, 200),  margin = 5px, linewidth=1)
+  plot(xplot, [ρ0t[1,:], ρt[1,:]], label=["ρ_u(ξ,t=1)" "ρ_b(ξ,t=1)"],size=(300, 200),  margin = 5px, linewidth=1)
   # ylims!(0, Ntot/L)
   xlabel!("Cell perimeter (μm)")
   ylabel!("MCA (t=$T)")
   # plot!(legend=:topright, legendcolumns=3)
   savefig(pPNG*"rhoINITIAL.pdf")
 
-  plot(xplotp1, [ρ0t[2,:], ρt[2,:]], label=["ρ_u(ξ,t=1)" "ρ_b(ξ,t=1)"],size=(300, 200),  margin = 5px, linewidth=1)
+  plot(xplot, [ρ0t[2,:], ρt[2,:]], label=["ρ_u(ξ,t=1)" "ρ_b(ξ,t=1)"],size=(300, 200),  margin = 5px, linewidth=1)
   # ylims!(0, Ntot/L)
   xlabel!("Cell perimeter (μm)")
   ylabel!("MCA (t=$T)")
@@ -308,7 +311,7 @@ function plots_run(nΔt,Δx,vt,xt,tensiont,ρt,ρ0t,ract,rhot,Mt,λ⁻²,pPNG,pR
 
   
   vplot=vt[end,:]
-  p1 = plot(xplotm1,vplot, legend=false,size=(300, 220), margin = 5px, alpha = 0.9)
+  p1 = plot(xplot,vplot, legend=false,size=(300, 220), margin = 5px, alpha = 0.9)
   # ylims!(0, Ntot/L)
   xlabel!("Cell perimeter (μm)")
   ylabel!("v")
@@ -316,7 +319,7 @@ function plots_run(nΔt,Δx,vt,xt,tensiont,ρt,ρ0t,ract,rhot,Mt,λ⁻²,pPNG,pR
   savefig(pPNG*"vt.pdf")
 
   ρtplot=ρt[end,:]
-  p2 = plot(xplotp1,ρtplot, legend=false,size=(300, 220), margin = 5px,linealpha=0.9,linewidth=1)
+  p2 = plot(xplot,ρtplot, legend=false,size=(300, 220), margin = 5px,linealpha=0.9,linewidth=1)
   # ylims!(0, Ntot/L)
   xlabel!("Cell perimeter (μm)")
   ylabel!("ρ_b")
@@ -324,7 +327,7 @@ function plots_run(nΔt,Δx,vt,xt,tensiont,ρt,ρ0t,ract,rhot,Mt,λ⁻²,pPNG,pR
   savefig(pPNG*"rhot.pdf")
 
   ractplot=ract[end,:]
-  p5 = plot(xplotp1,ractplot, legend=false,size=(300, 220), margin = 5px,linewidth=1)
+  p5 = plot(xplot,ractplot, legend=false,size=(300, 220), margin = 5px,linewidth=1)
   # ylims!(0, Ntot/L)
   xlabel!("Cell perimeter (μm)")
   ylabel!("rac")
@@ -332,7 +335,7 @@ function plots_run(nΔt,Δx,vt,xt,tensiont,ρt,ρ0t,ract,rhot,Mt,λ⁻²,pPNG,pR
   savefig(pPNG*"ract.pdf")
 
   rhotplot=rhot[end,:]
-  p6 =plot(xplotp1,rhotplot, legend=false,size=(300, 220), margin = 5px,linewidth=1)
+  p6 =plot(xplot,rhotplot, legend=false,size=(300, 220), margin = 5px,linewidth=1)
   # ylims!(0, Ntot/L)
   xlabel!("Cell perimeter (μm)")
   ylabel!("rhoA")
@@ -341,7 +344,7 @@ function plots_run(nΔt,Δx,vt,xt,tensiont,ρt,ρ0t,ract,rhot,Mt,λ⁻²,pPNG,pR
   
 
   xxplot=xt[end,:]
-  p3 = plot(xplotm1,(xxplot), legend=false,size=(300, 220), margin = 5px,linealpha=0.8)
+  p3 = plot(xplot,(xxplot), legend=false,size=(300, 220), margin = 5px,linealpha=0.8)
   # ylims!(0, Ntot/L)
   xlabel!("Cell perimeter (μm)")
   ylabel!("x")
@@ -349,7 +352,7 @@ function plots_run(nΔt,Δx,vt,xt,tensiont,ρt,ρ0t,ract,rhot,Mt,λ⁻²,pPNG,pR
   savefig(pPNG*"xt.pdf")
     
   tensiontplot=tensiont[end,:]
-  p4 = plot(xplotm2,(tensiontplot), legend=false,size=(300, 220), margin = 5px)
+  p4 = plot(xplot,(tensiontplot), legend=false,size=(300, 220), margin = 5px)
   # ylims!(0, Ntot/L)
   xlabel!("Cell perimeter (μm)")
   ylabel!("Tension")
@@ -362,13 +365,10 @@ end
 
 #plots for simulation without rac and rho, only mechanics
 function plots_run2(nΔt,vt,xt,tensiont,λ⁻²,pPNG)
-  xplotp1 = range(0, L, length=partition+1)
-  xplotm1 = range(0, L, length=partition-1)
-  xplotm2 = range(0, L, length=partition-2)
   xplot = range(0, L, length=partition)
   plot_lines =  trunc(Int,nΔt/20)
   vplot=vt[1:plot_lines:end,:]
-  p1 = plot(xplotm1,transpose(vplot), legend=false,palette = :hawaii25,size=(300, 220), margin = 1px)
+  p1 = plot(xplot,transpose(vplot), legend=false,palette = :hawaii25,size=(300, 220), margin = 1px)
   # ylims!(0, Ntot/L)
   xlabel!("Cell perimeter (μm)")
   ylabel!("v")
@@ -376,7 +376,7 @@ function plots_run2(nΔt,vt,xt,tensiont,λ⁻²,pPNG)
   savefig(pPNG*"vt.pdf")
 
   xxplot=xt[:1:plot_lines:end,:]
-  p3 = plot(xplotm1,transpose(xxplot), legend=false,palette = :hawaii25,size=(300, 220), margin = 1px,linealpha=0.8)
+  p3 = plot(xplot,transpose(xxplot), legend=false,palette = :hawaii25,size=(300, 220), margin = 1px,linealpha=0.8)
   # ylims!(0, Ntot/L)
   xlabel!("Cell perimeter (μm)")
   ylabel!("x")
@@ -384,7 +384,7 @@ function plots_run2(nΔt,vt,xt,tensiont,λ⁻²,pPNG)
   savefig(pPNG*"xt.pdf")
 
   tensiontplot=tensiont[:1:plot_lines:end,:]
-  p4 = plot(xplotm2,transpose(tensiontplot), legend=false,palette = :hawaii25,size=(300, 220), margin = 1px)
+  p4 = plot(xplot,transpose(tensiontplot), legend=false,palette = :hawaii25,size=(300, 220), margin = 1px)
   # ylims!(0, Ntot/L)
   xlabel!("Cell perimeter (μm)")
   ylabel!("Tension")
@@ -404,8 +404,8 @@ end
 
 #plots for an array pf simulations where friction and viscosity change for each simulation
 function plots_end()
-  xplotm1 = range(0, L, length=partition-1)
-  xplotm2 = range(0, L, length=partition-2)
+  xplot = range(0, L, length=partition-1)
+  xplot = range(0, L, length=partition-2)
 
   #FINAL PLOTS ARTICLE
   whicheta = 1 
@@ -583,7 +583,7 @@ function plots_end()
 
   tensiontplot=tension[2,:,end,:]
   tensiontplot2=tension2[2,:,end,:]
-  plot(xplotm2,transpose(tensiontplot), label=leg2, legend=:topright, palette = :berlin25,size=(300, 220), margin = 1px)
+  plot(xplot,transpose(tensiontplot), label=leg2, legend=:topright, palette = :berlin25,size=(300, 220), margin = 1px)
   xlabel!("Cell perimeter (μm)")
   ylabel!("Tension(η)")
   # plot!(legend=:topright, legendcolumns=3)
