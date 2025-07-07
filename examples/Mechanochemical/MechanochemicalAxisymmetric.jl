@@ -15,33 +15,33 @@ using SurfaceBulkViscousFlows
 ###############CONSTANT MECHANICAL PARAMETERS ##############
 partition=40       #size of the FE system
 χ = 100               # [pN s/um^3] friction coefficient
-η=10000               # [pN s/ um] 2D viscosity of the cortex
+η=100000               # [pN s/ um] 2D viscosity of the cortex
 L = 12 #1.2
 R = 10       # [um] System size length
 k=100.0            # [pN /um] elastic constant for the membrane
-σₐ₀ =  5.0        # [pN /um^2] maximum active "pressure"
+σₐ₀ =  0.0        # [pN /um^2] maximum active "pressure"
 
 const koff = 1.4  # ezrin koff [1/s] toff=0.7s Fritzsche et al
 const kon  = 5.0  # ezrin kon [1/s] ton =0.2s Fritzsche et al
-D = 0.003   # diffusion of the membrane [um^2/s] 0.003  Fritzsche et al
-M0 = 1.0 #total amount of ezrin
-const wrac=R/2.5 #Opto signal use this for the Gaussian distribution width
+D = 0.03   # diffusion of the membrane [um^2/s] 0.003  Fritzsche et al
+M0 = 0.05 #total amount of ezrin
+const wrac=R*π/2.5 #Opto signal use this for the Gaussian distribution width
 #in case one wants nonlinear deactication if the system would be unstable
-λᵇ = 0   # for bound ezrin 
+λᵇ = 0.001   # for bound ezrin 
 λʳᴬ= 0   #for Rho
 
 #adimensional numbers that define the system
-τₐ = η/σₐ₀ #for σₐ₀=100
+τₐ = η/σₐ₀ # 100s for σₐ₀=100
 τₑ = η/k #almost always?
 Pe⁻¹ = D*η/(σₐ₀*R^2) #D*η/(σₐ₀*L^2) 0.00075 for σₐ₀=100
 λ = sqrt( η*R /(χ*R*R*M0) ) #\bar λ in the suppl material. Adimensional lenthscale
 
 rac0=0.01# ADIMENSINAlizes rac switch for protrusion, changes the slope of the threshold function
 vCTE= -0.015 #Scale for the polimerizatio velocity
-ten0=10.0 #denominator for protrusion dependence on tension
+ten0=10000.0 #denominator for protrusion dependence on tension
 tenth=1.0 #threshold for tension to activate rho
 sig0 = 5.00  #adimensionalizes the tension term for rho
-MCAbth = 0.068 #MCA/ezrin value below which protrusion starts
+MCAbth = 0.02 #MCA/ezrin value below which protrusion starts
 rho0 = 0.01 #adimensionalizes the MCA concentration term for rac
 
 #Rac Coefficients
@@ -63,7 +63,7 @@ b_t = 0
 #time variables
 topto=20 #time to start opto signal
 Δt  = 1.0 #timestep
-T = 300 #time to finish simulation
+T = 303 #time to finish simulation
 #if we wanna do multiple simulations in a row with different variables
 setsv=1
 setsx=2 
