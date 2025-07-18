@@ -15,15 +15,15 @@ using SurfaceBulkViscousFlows
 ###############CONSTANT MECHANICAL PARAMETERS ##############
 partition=40       #size of the FE system
 χ = 100               # [pN s/um^3] friction coefficient
-η=100000               # [pN s/ um] 2D viscosity of the cortex
+η=1000               # [pN s/ um] 2D viscosity of the cortex
 L = 12 #1.2
 R = 10       # [um] System size length
 k=100.0            # [pN /um] elastic constant for the membrane
-σₐ₀ =  0.0        # [pN /um^2] maximum active "pressure"
+σₐ₀ =  20.0        # [pN /um^2] maximum active "pressure"
 
-const koff = 1.4  # ezrin koff [1/s] toff=0.7s Fritzsche et al
-const kon  = 5.0  # ezrin kon [1/s] ton =0.2s Fritzsche et al
-D = 0.03   # diffusion of the membrane [um^2/s] 0.003  Fritzsche et al
+koff = 14  # ezrin koff [1/s] toff=0.7s Fritzsche et al
+kon  = 50  # ezrin kon [1/s] ton =0.2s Fritzsche et al
+D = 0.3   # diffusion of the membrane [um^2/s] 0.003  Fritzsche et al
 M0 = 0.05 #total amount of ezrin
 const wrac=R*π/2.5 #Opto signal use this for the Gaussian distribution width
 #in case one wants nonlinear deactication if the system would be unstable
@@ -37,11 +37,11 @@ Pe⁻¹ = D*η/(σₐ₀*R^2) #D*η/(σₐ₀*L^2) 0.00075 for σₐ₀=100
 λ = sqrt( η*R /(χ*R*R*M0) ) #\bar λ in the suppl material. Adimensional lenthscale
 
 rac0=0.01# ADIMENSINAlizes rac switch for protrusion, changes the slope of the threshold function
-vCTE= -0.015 #Scale for the polimerizatio velocity
+vCTE= -0#.4 #Scale for the polimerizatio velocity
 ten0=10000.0 #denominator for protrusion dependence on tension
 tenth=1.0 #threshold for tension to activate rho
 sig0 = 5.00  #adimensionalizes the tension term for rho
-MCAbth = 0.02 #MCA/ezrin value below which protrusion starts
+MCAbth = 0.01 #MCA/ezrin value below which protrusion starts
 rho0 = 0.01 #adimensionalizes the MCA concentration term for rac
 
 #Rac Coefficients
@@ -63,7 +63,7 @@ b_t = 0
 #time variables
 topto=20 #time to start opto signal
 Δt  = 1.0 #timestep
-T = 303 #time to finish simulation
+T = 1006 #time to finish simulation
 #if we wanna do multiple simulations in a row with different variables
 setsv=1
 setsx=2 
@@ -71,7 +71,7 @@ setsx=2
 #output folder name
 len=trunc(λ,digits=2)
  @info "Characteristic length $len system size $R"
-simulation = "Conserved/Mechanochemical/T=$T part=$partition sig_a=$σₐ₀ ten0=$ten0 db=$dᵇ da=$dᵃ a_t=b_t=$b_t rth=$MCAbth len=$len/bopto=$βopto aopto=$αopto rho0=$rho0 D=$D Drac=Drho=$Drac a0=$α₀ b0=$β₀ M0=$M0 deltat=$Δt vCTE=$vCTE tenth=$tenth/"
+simulation = "Conserved/Mechanochemical/T=$T part=$partition sig_a=$σₐ₀ ten0=$ten0 db=$dᵇ da=$dᵃ a_t=b_t=$b_t rth=$MCAbth len=$len/free 90 lambda=$λᵇ bopto=$βopto aopto=$αopto rho0=$rho0 D=$D Drac=Drho=$Drac a0=$α₀ b0=$β₀ M0=$M0 deltat=$Δt vCTE=$vCTE tenth=$tenth/"
 #store VTUs in one folder
 pVTU="./VTU/"*simulation
 mkpath(pVTU)
