@@ -9,7 +9,7 @@ using Gridap
 using GridapEmbedded
 using Plots
 using Plots.PlotMeasures
-using SurfaceBulkViscousFlows 
+using SurfaceBulkViscousFlows
 
 
 ###############CONSTANT MECHANICAL PARAMETERS ##############
@@ -38,9 +38,6 @@ const wrac=R2*π/2.5 #Opto signal use this for the Gaussian distribution width
 Pe⁻¹ = D*η/(σₐ₀*R^2) #D*η/(σₐ₀*L^2) 0.00075 for σₐ₀=100
 λ = sqrt( η*R*π /(χ*R*R*π*π*M0) ) #\bar λ in the suppl material. Adimensional lenthscale
 
-rac0=0.01# ADIMENSINAlizes rac switch for protrusion, changes the slope of the threshold function
-vCTE= -0#.4 #Scale for the polimerizatio velocity
-ten0=10000.0 #denominator for protrusion dependence on tension
 tenth=2.0 #threshold for tension to activate rho
 sig0 = 2.00  #adimensionalizes the tension term for rho
 MCAbth = 0.01 #MCA/ezrin value below which protrusion starts
@@ -73,7 +70,7 @@ setsx=2
 #output folder name
 len=trunc(λ,digits=2)
  @info "Characteristic length $len system size $R"
-simulation = "Mechanochemical/T=$T part=$partition ten0=$ten0 db=$dᵇ da=$dᵃ a0=$α₀ b0=$β₀ bopto=$βopto aopto=$αopto a_t=b_t=$b_t rth=$MCAbth/full sig_a=$σₐ₀ len=$len lambda=$λᵇ rho0=$rho0 D=$D Drac=Drho=$Drac M0=$M0 deltat=$Δt vCTE=$vCTE tenth=$tenth/"
+simulation = "singlet/T=$T part=$partition db=$dᵇ da=$dᵃ a0=$α₀ b0=$β₀ bopto=$βopto aopto=$αopto a_t=b_t=$b_t/sig_a=$σₐ₀ len=$len rho0=$rho0 D=$D Drac=Drho=$Drac M0=$M0 deltat=$Δt/"
 #store VTUs in one folder
 pVTU="./VTU/"*simulation
 mkpath(pVTU)
@@ -105,11 +102,11 @@ for i in 2:1:setsx
     #η= 0+0*j+10^(1*(j+1))              # [pN s/ um] 2D viscosity of the cortex
     lη = η  
     xη[j]=lη
-    # tension[i,j,:,:],MCA_b[i,j,:,:],v[i,j,:,:],a[i,j,:,:],b[i,j,:,:],αt[i,j,:,:],βt[i,j,:,:] = 
-      run_mechanochemical_axisymmetric(χ,λ⁻²,lη,T,Δt,partition,
-        L,simulation,wrac,αopto,βopto,kon,koff,M0,α₀,β₀,k,D,
-        σₐ₀,λᵇ,Drac,Drho,rac0,rho0,ten0,a_t,b_t,α,β,dᵃ,dᵇ,
-        sig0,tenth,λʳᴬ,MCAbth,topto,vCTE,R,R2,L2)
+  #  MCA_b[i,j,:,:],v[i,j,:,:],a[i,j,:,:],b[i,j,:,:]= 
+run_singlet_axisymmetric(χ,lη,T,Δt,partition,
+        L,simulation,wrac,αopto,βopto,kon,koff,M0,α₀,β₀,
+        σₐ₀,λᵇ,D,Drac,Drho,ten0,a_t,b_t,α,β,dᵃ,dᵇ,
+        sig0,tenth,MCAbth,topto,R,R2,L2)
   end
 end
 
