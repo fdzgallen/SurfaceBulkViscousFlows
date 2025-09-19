@@ -59,10 +59,14 @@ Drho = 0.005 #diffusion rate
 βopto = 0 # opto input for Rho
 b_t = 0
 
+Dₑ = 0.01
+kₑoff = 1.0
+kₑon = 1.0 
+
 #time variables
 topto=20 #time to start opto signal
 Δt  = 1.0 #timestep
-T = 500 #time to finish simulation
+T = 400 #time to finish simulation
 #if we wanna do multiple simulations in a row with different variables
 setsv=1
 setsx=2 
@@ -105,7 +109,7 @@ for i in 2:1:setsx
   #  MCA_b[i,j,:,:],v[i,j,:,:],a[i,j,:,:],b[i,j,:,:]= 
 run_singlet_axisymmetric(χ,lη,T,Δt,partition,
         L,simulation,wrac,αopto,βopto,kon,koff,M0,α₀,β₀,
-        σₐ₀,λᵇ,D,Drac,Drho,ten0,a_t,b_t,α,β,dᵃ,dᵇ,
+        σₐ₀,λᵇ,D,Drac,Drho,a_t,b_t,α,β,dᵃ,dᵇ,
         sig0,tenth,MCAbth,topto,R,R2,L2)
   end
 end

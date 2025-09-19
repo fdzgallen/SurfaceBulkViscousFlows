@@ -73,7 +73,7 @@ setsx=2
 #output folder name
 len=trunc(λ,digits=2)
  @info "Characteristic length $len system size $R"
-simulation = "Mechanochemical/T=$T part=$partition ten0=$ten0 db=$dᵇ da=$dᵃ a0=$α₀ b0=$β₀ bopto=$βopto aopto=$αopto a_t=b_t=$b_t rth=$MCAbth/full sig_a=$σₐ₀ len=$len lambda=$λᵇ rho0=$rho0 D=$D Drac=Drho=$Drac M0=$M0 deltat=$Δt vCTE=$vCTE tenth=$tenth/"
+simulation = "Mechanochemical/T=$T part=$partition ten0=$ten0 db=$dᵇ da=$dᵃ a0=$α₀ b0=$β₀ bopto=$βopto aopto=$αopto a_t=b_t=$b_t rth=$MCAbth/full2 sig_a=$σₐ₀ len=$len lambda=$λᵇ rho0=$rho0 D=$D Drac=Drho=$Drac M0=$M0 deltat=$Δt vCTE=$vCTE tenth=$tenth/"
 #store VTUs in one folder
 pVTU="./VTU/"*simulation
 mkpath(pVTU)

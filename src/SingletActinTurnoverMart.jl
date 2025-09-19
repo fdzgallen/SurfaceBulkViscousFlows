@@ -6,7 +6,166 @@
 # Written by Andreu F Gallen working in Turlier lab and in collaboration with Orion Weiner's lab
 
 include("Plots_RhoRacSinglet.jl")
- 
+
+function cortical_flow_problem_DefShape(eₕ,dΩᶜ,dΓ,nΓ,γ::Float64,μ_cort::Float64,μ_int::Float64,μ_ext::Float64,e_cort::Float64,r_cell::Float64)
+  aʷ(v,w) =
+    ∫( ( εᶜ(v,nΓ)⊙εᵈ(w,nΓ) + divᶜ(v,nΓ)⋅divᶜ(w,nΓ) + 2*(v⋅iy)*(w⋅iy) + divᶜ(v,nΓ)*(w⋅iy) + divᶜ(w,nΓ)*(v⋅iy) )*y )dΓ # Viscous terms (axisymmetric)
+
+  f(w,e,ρ) = ∫( ( -(divᶜ(w,nΓ)+w⋅iy)*(e) + σₐ₀*e*divᶜ(ρ,nΓ) )*y )dΓ # RHS: Active terms
+  sᵘ(v,w) = ∫( γ*((nΓ⋅ε(v))⊙(nΓ⋅ε(w))) )dΩᶜ # Trace FEM: Stabilisation term
+  #RB¹ = VectorValue(1.0,0.0)
+  #r¹(u,ℓ) = ∫( ( (u⋅RB¹)*ℓ )*y )dΓ # Translational RB mode
+  r²(v,ℓ) = ∫( ( (v⋅nΓ )*ℓ )*y )dΓ # Volume conservation
+
+  aᵛ((vˢ,l¹,l⁴),(wˢ,ℓ¹,ℓ⁴)) =
+    aʷ(vˢ,wˢ) + sᵘ(vˢ,wˢ) +
+    r²(vˢ,ℓ⁴) + r²(wˢ,l⁴) #+ r¹(vˢ,ℓ¹) + r¹(vˢ,l¹)
+  bᵛ((wˢ,ℓ¹,ℓ⁴)) = f(wˢ,eₕ,ρ)  # NEW
+  aᵛ, bᵛ
+  #   aʷ(u,v) =
+  #   ∫( ( εᶜ(u,nΓ)⊙εᵈ(v,nΓ) + divᶜ(u,nΓ)⋅divᶜ(v,nΓ) + 2*(u⋅iy)*(v⋅iy) + divᶜ(u,nΓ)*(v⋅iy) + divᶜ(v,nΓ)*(u⋅iy) )*y )dΓ # Viscous terms (axisymmetric)
+  # f(v,e) = ∫( ( -(divᶜ(v,nΓ)+v⋅iy)*(e) )*y )dΓ # RHS: Active terms
+  # σᵘ(ε,q) = μ_int*r_cell/(μ_cort*e_cort)*ε - q*one(ε)
+  # σᵉ(ε,q) = μ_ext*r_cell/(μ_cort*e_cort)*ε - q*one(ε) # NEW
+  # βʳ(u,v,p,σ) = ∫( ( v⋅((σ∘(ε(u),p))⋅nΓ) )*y )dΓ # RHS: Traction from bulk velocities
+  # sᵘ(u,v) = ∫( γ*((nΓ⋅ε(u))⊙(nΓ⋅ε(v))) )dΩᶜ # Trace FEM: Stabilisation term
+  # RB¹ = VectorValue(1.0,0.0)
+  # r¹(u,ℓ) = ∫( ( (u⋅RB¹)*ℓ )*y )dΓ # Translational RB mode
+  # r²(u,ℓ) = ∫( ( (u⋅nΓ )*ℓ )*y )dΓ # Volume conservation
+  # aᵛ((uˢ,l¹,l⁴),(vˢ,ℓ¹,ℓ⁴)) =
+  #   aʷ(uˢ,vˢ) + sᵘ(uˢ,vˢ) +
+  #   r¹(uˢ,ℓ¹) + r¹(vˢ,l¹) + r²(uˢ,ℓ⁴) + r²(vˢ,l⁴)
+  # bᵛ((vˢ,ℓ¹,ℓ⁴)) = f(vˢ,eₕ) - βʳ(ulₕ,vˢ,plₕ,σᵘ) + βʳ(ulₕᵉ,vˢ,plₕᵉ,σᵉ) # NEW
+end
+
+function update_buffer!(i,t,dt,v₋₂,mv₋₂)
+    # Check if buffer has already been updated
+    if buffer[].t == t
+      return true
+    else
+    # Update position of the level set with normal velocities
+    cache_nd = buffer[].cache_nd
+    if buffer[].Ωᶜ === nothing # if there's not a previous cut active mesh
+      _φ₋  = interpolate_everywhere(phi.φ,Vbg) # interpolation of level set function in the TestFESpace
+    else # if there's a previous cut active mesh
+      cp₋₂ = buffer[].cp₋ # store previous closest point projections
+      φ₋₂  = buffer[].φ₋ # store previous level set function
+      __φ  = get_free_dof_values(φ₋₂.φ) # dofs of the previous level set function
+      ϕ₋, cache_nd = compute_normal_displacement!(cache_nd,cp₋₂,φ₋₂,v₋₂,dt,Ω) # displacement of level set function
+      ϕ₋   = __φ - ϕ₋ # dofs of new level set function (minus because zero level set becomes negative (inside) level set)
+      _φ₋  = FEFunction(Vbg,ϕ₋) # interpolation of new level set function in the FESpace
+    end
+    # Current time level set
+    φ₋  = AlgoimCallLevelSetFunction(_φ₋,∇(_φ₋)) # new level set function
+    ( i % redistance_frequency == 0 ) && begin # if it's the moment to redistance level set
+      _φ₋  = compute_distance_fe_function(bgmodel,Vbg,φ₋,order,cppdegree=3) # redistancing level set function
+      φ₋  = AlgoimCallLevelSetFunction(_φ₋,∇(_φ₋)) # new level set function (if redistancing is needed)
+    end
+    nΓ  = normal(φ₋,Ω) # new normal to level set function
+    cp₋ = compute_closest_point_projections(Vbg,φ₋,order,
+                  cppdegree=3,trim=true,limitstol=1.0e-2) # points on the interface that are projections of points in the space
+    # limitstol defines an area outside/around the domain: the points that are projected in this area are then projected back at the border of the domain
+    # Current time surface and bulk measures
+    squad = Quadrature(algoim,φ₋,degree,phase=CUT) # quadrature rule for cut elements
+    dΓbg₋ = Measure(Ω,squad,data_domain_style=PhysicalDomain()) # measure of cut elements
+    viquad = Quadrature(algoim,φ₋,degree,phase=IN) # quadrature rule for inner elements
+    dΩibg₋ = Measure(Ω,viquad,data_domain_style=PhysicalDomain()) # measure of inner elements
+    # NEW
+    vequad = Quadrature(algoim,φ₋,degree,phase=OUT) # quadrature rule for ext elements
+    dΩebg₋ = Measure(Ω,vequad,data_domain_style=PhysicalDomain()) # measure of ext elelements
+    # Next time narrow-band surface and bulk measures
+    δ₋ = 1.2 * mv₋₂ * dt # mv-2 = max velocity at previous timestep
+    _φʳ = interpolate_everywhere(_φ₋-δ₋,Vbg) # interpolation of a slightly outside function on the FESpace
+    _φˡ = interpolate_everywhere(_φ₋+δ₋,Vbg) # interpolation of a slightly inside function on the FESpace (true = outside the cell
+    _φˡ_ext = interpolate_everywhere(-(_φ₋+δ₋),Vbg) # interpolation of a slightly inside function on the FESpace (true = inside the cell)
+    # Narrow band surface active triangulations and measures
+    is_c₋ = is_cell_active(dΓbg₋) # only cells with quadrature points for cut cell measure
+    is_cʳ = narrow_band_mask(_φʳ) # only cells that are cut by the slightly outside function
+    is_cˡ = narrow_band_mask(_φˡ) # only cells that are cut by the slightly inside function
+    is_nᶜ = lazy_map((c₋,cʳ,cˡ)->c₋|cʳ|cˡ,is_c₋,is_cʳ,is_cˡ) # cut cells or in narrow band
+    Ωᶜ  = Triangulation(Ω,is_nᶜ) # mesh of cut cells or in narrow band
+    dΩᶜ = Measure(Ωᶜ,2*order) # measure of cut cells or in narrow band
+    dΓ  = restrict_measure(dΓbg₋,Triangulation(Ω,is_c₋)) # filter quadrature of empty cells (not needed)
+    
+    #= debugging
+    directory_try = "/Users/martinagatti/Documents/InternshipGatti/SurfaceBulkExternalActiveFlows/DefShape/debug"
+    isdir(directory_try) || mkpath(directory_try)
+    filename_try = "cut_"*string(my_case)*"_ts"*string(i)*".vtu"
+    filepath_try = joinpath(directory_try, filename_try)
+    writevtk(Ωᶜ,filepath_try)
+    filename_try = "ext_"*string(my_case)*"_ts"*string(i)*".vtu"
+    filepath_try = joinpath(directory_try, filename_try)
+    writevtk(Ωᵉ,filepath_try)
+    filename_try = "int_"*string(my_case)*"_ts"*string(i)*".vtu"
+    filepath_try = joinpath(directory_try, filename_try)
+    writevtk(Ωˡ,filepath_try)
+    =#
+    # Current aggregates
+    aggsˡ = aggregate_narrow_band(Ω,is_nᵃ,is_a₋,is_c₋,IN)
+    # NEW
+    aggsᵉ = aggregate_narrow_band(Ω,is_nᵉ,is_e₋,is_c₋,OUT)
+    # Update buffer
+    buffer[] = (Ωᶜ=Ωᶜ,dΩᶜ=dΩᶜ,
+                dΓ=dΓ,nΓ=nΓ,cp₋=cp₋,φ₋=φ₋,t=t,cache_nd=cache_nd)
+    return true
+    end
+  end
+function update_all!(i::Int,t::Real,dt::Real,disp,val::Real)
+    update_buffer!(i,t,dt,disp,val) # Update only geometry and integration objects
+    # Triangulations and aggregates 
+    Ωᶜ = buffer[].Ωᶜ 
+    # Measures and normal 
+    dΩᶜ = buffer[].dΩᶜ 
+    dΓ  = buffer[].dΓ
+    nΓ  = buffer[].nΓ
+    φ₋  = buffer[].φ₋
+    # Test FE spaces
+    ## (u,p)-bulk
+    # Vstdᵘˡ = TestFESpace(Ωˡ,reffeᵘ,dirichlet_tags=["boundary"], # defined on whole boundary but taken only on Ωˡ so:
+    #                                                             # DBCs are actually set on correct part of boundary
+    #                                                             # no need to modify when cell is moving ()
+    #                                dirichlet_masks=[(false,true)]) # Axisymmetric Dirichlet BCs
+   # Vserᵘˡ = TestFESpace(Ωˡ,reffeˢ,conformity=:L2)
+   # Vᵘˡ = AgFEMSpace(Vstdᵘˡ,aggsˡ,Vserᵘˡ) # Inf-sup stable AgFE extension for bulk velocities
+    #Vstdᵖˡ = TestFESpace(Ωˡ,reffeᵖ)
+   # Vstdᵖˡ = TestFESpace(Ωˡ, reffeᵖ, constraint=:zeromean)
+   # Vᵖˡ = AgFEMSpace(Vstdᵖˡ,aggsˡ)
+    # NEW
+    ## (u,p)-ext
+   # Vstdᵘᵉ = TestFESpace(Ωᵉ,reffeᵘ,dirichlet_tags=[1,2,5, 7,8, 3,4,6], #1,2,5=bottom(corner_left,edge,corner_right)   7,8=lateral edges(l,r)   3,4,6=top(corner_left,edge,corner_right)
+   #                                dirichlet_masks=[(false,true),(false,true),(false,true),  (false,true),(false,true),  (false,true),(false,true),(false,true)])
+                                   # bottom: zero vertical velocity
+                                   # lateral: zero vertical velocities
+                                   # top: zero vertical velocity
+   # Vserᵘᵉ = TestFESpace(Ωᵉ,reffeˢ,conformity=:L2)
+    #Vᵘᵉ = AgFEMSpace(Vstdᵘᵉ ,aggsᵉ,Vserᵘᵉ ) # Inf-sup stable AgFE extension for external velocities
+    #Vstdᵖᵉ = TestFESpace(Ωᵉ ,reffeᵖ)
+  #  Vstdᵖᵉ = TestFESpace(Ωᵉ ,reffeᵖ, constraint=:zeromean)
+   # Vᵖᵉ = AgFEMSpace(Vstdᵖᵉ ,aggsᵉ)
+    ## u-surface
+    Vʷ = TestFESpace(Ωᶜ,reffeᵘ,dirichlet_tags=["boundary"],dirichlet_masks=[(false,true)]) # Axisymmetric Dirichlet BCs
+    ## e-surface (myosin density)
+    Vᵉ = TestFESpace(Ωᶜ,reffeᵉ)
+    ## Lagrange multipliers to impose constraints:
+    ### 1. Zero mean pressure in the bulk
+    ### 2. Translation rigid body mode in axisymmetric setting (horizontal)
+    ### 3. (Staggered scheme) Bulk incompressibility for the surface problem
+    Vˡ = ConstantFESpace(bgmodel)
+    # Trial FE spaces 
+    Uʷ = TrialFESpace(Vʷ)
+    Uᵉ = TrialFESpace(Vᵉ) 
+    # Multifield FE spaces
+    ## Surface flows
+    if deform == false #Fixed shape
+      Yᵛ = MultiFieldFESpace([Vʷ,Vˡ])
+      Xᵛ = MultiFieldFESpace([Uʷ])
+    elseif deform == true #Deformed shape
+      Yᵛ = MultiFieldFESpace([Vʷ])
+      Xᵛ = MultiFieldFESpace([Uʷ])
+    end 
+    Xᵛ,Yᵛ,Uᵉ,Vᵉ,dΩᶜ,dΓ,nΓ,φ₋.φ,Ωᶜ #Xᵛ,Yᵛ,Xᵘ,Yᵘ,Xᵉ,Yᵉ,Xʳ,Yʳ,Uᵉ,Vᵉ,dΩˡ,dΩᶜ,dΩᵉ,dΓ,nΓ,φ₋.φ,Ωᶜ,Ωˡ,Ωᵉ
+  end
+
 function MCA_bound_unbound_weak_formsS(Δt,kon,koff,R2,D,nΓ,dΓ)
     # Now for MAC bound
   # mass term for the temporal evolution MCA_b
@@ -84,12 +243,22 @@ function run_singlet_axisymmetric(χ,η,T,Δt,part,
   # Lets copy the code in the output folder to be able to check code used for each simulation
   cp(@__FILE__, pPNG*split(@__FILE__, "/")[end],force=true)
 
+buffer = Ref{Any}((Ωᶜ=nothing,dΩᶜ=nothing,        # Cut active mesh and standard quadrature
+                     Ωˡ=nothing,dΩˡ=nothing,        # Interior fluid acive mesh and quadrature
+                     Ωᵉ=nothing,dΩᵉ=nothing,        # Exterior fluid active mesh and quadrature
+                     dΓ=nothing,nΓ=nothing,         # Surface quadrature and normal
+                     φ₋=nothing,                    # Level set
+                     aggsˡ=nothing,aggsᵉ=nothing,   # Interior and exterior aggregates
+                     cp₋=nothing,t=nothing,         # Closest point projection and current time
+                     cache_nd=nothing))             # Cached variables to optimise memorys
 
   order = 1
   #Starting Boundary conditions
   # x₀ = 0.0
   # xₗ = 0.0
   # diri_x(p,x₀,xₗ) = p[1] < 0 ? x₀ : xₗ # x₀ on negative x coordinate, xₗ otherwise  
+
+
 
   v₀ = 0.0
   vₗ = 0.0
@@ -197,13 +366,11 @@ function run_singlet_axisymmetric(χ,η,T,Δt,part,
 
 
   #Now for v
-  aᵥ(MCA_b,v,w,e) =  ∫( ( -η *w*(∇ᵈ(e,nΓ)⋅(∇ᵈ(v,nΓ)) ))*y )dΓ + 
-    ∫( ( η * e * (∇ᵈ(v,nΓ)⋅∇ᵈ(w,nΓ)))*y )dΓ - ∫( ( 2*(∇ᵈ(v,nΓ)*∇ᵈ(e,nΓ)⋅(TensorValue(0.0,-1.0,1.0,0.0)⋅nΓ)*w  +  e* (∇ᵈ(v,nΓ)⋅∇ᵈ(w,nΓ))))*y )dΓ + 
-    ∫( ( (χ*MCA_b) * (v*w) )*y )dΓ
-  bᵥ(w,uh_ezrin_b,ρ,e) =  ∫( ( σₐ₀*(e*w*(∇ᵈ(ρ,nΓ)⋅(TensorValue(0.0,-1.0,1.0,0.0)⋅nΓ) )))*y )dΓ + 
-     ∫( (σₐ₀*(w*ρ*(∇ᵈ(e,nΓ)⋅(TensorValue(0.0,-1.0,1.0,0.0)⋅nΓ) )) )*y )dΓ # ∫(( gradrho*w )*y )dΓ no feedback is ∫( w*∇σₐ )dΓ
+  aᵥ(MCA_b,v,w,e) =  ∫( ( -η *w*(∇ᵈ(e,nΓ)⋅ (∇ᵈ(v,nΓ)) )+ 
+   η * (∇ᵈ(v,nΓ)⋅∇ᵈ(w,nΓ)) )*y )dΓ + ∫( ( (χ*MCA_b) * (v*w) )*y )dΓ
+  bᵥ(w,uh_ezrin_b,uh_rho) =  ∫( ( σₐ₀*(w*(∇ᵈ(uh_rho,nΓ)⋅(TensorValue(0.0,-1.0,1.0,0.0)⋅nΓ) )) )*y )dΓ # ∫(( gradrho*w )*y )dΓ no feedback is ∫( w*∇σₐ )dΓ
   Aᵥ(v,w) = aᵥ(uh_ezrin_b,v,w,uh_e) + s₀v(v,w)
-  Bᵥ(w) = bᵥ(w,uh_ezrin_b,uh_rho,uh_e)
+  Bᵥ(w) = bᵥ(w,uh_ezrin_b,uh_rho)
   #We can now use MCA_b and x to solve v
   op_v= AffineFEOperator(Aᵥ,Bᵥ,V,WD0)
 
@@ -229,8 +396,8 @@ function run_singlet_axisymmetric(χ,η,T,Δt,part,
   #SOLVE MCA_b AT t=0 vien initial velocity zero
   Aezrin_b(MCA_b,w) = aezrin_b(MCA_b,uh_v,w) + s₀MCA(MCA_b,w)
   Bezrin_b(w) = bezrin_b(w,uh_ezrin_u,uh_ezrin_b_old,λ)
-  op_ezrin_b= AffineFEOperator(Aezrin_b,Bezrin_b,RHO,Q0)
-  uh_ezrin_b=solve(op_ezrin_b)
+  op_ezrin_b = AffineFEOperator(Aezrin_b,Bezrin_b,RHO,Q0)
+  uh_ezrin_b = solve(op_ezrin_b)
   uh_ezrin_b_old=uh_ezrin_b
 
   #SOLVE MCA_u AT t=0
@@ -316,7 +483,7 @@ function run_singlet_axisymmetric(χ,η,T,Δt,part,
   
   i = 0
   t=0
-  Xᵛ,Yᵛ,Uᵉ,Vᵉ,dΩˡ,dΩᶜ,dΩᵉ,dΓ,nΓ,φ,Ωᶜ,Ωˡ,Ωᵉ = update_all!(0,t₀,Δt,u₀,m₀)
+  Xᵛ,Yᵛ,Uᵉ,Vᵉ,dΩᶜ,dΓ,nΓ,φ,Ωᶜ = update_all!(0,t₀,Δt,u₀,m₀)
   writevtk(Ωᶜ,pVTU*"VTU$i",cellfields=["v"=>uh_v,"ezrin_b"=>uh_ezrin_b,"ezrin_u"=>uh_ezrin_u,"rac"=>uh_rac,"rho"=>uh_rho,"f"=>φ.φ]) 
  for ti in t₀:Δt:(T-Δt)
     #HERE WE DEFINE WHETHER THE CODE IS FRONT TO BACK OR BACK TO FRONT, DEPENDING IN WHERE WE ACTIVATE OPTO
