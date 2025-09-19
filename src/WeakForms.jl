@@ -1,5 +1,39 @@
 iy(x) = VectorValue( 0.0, 1.0 / x[2] ); y(x) = x[2]
 
+function cortical_flow_problem_axisymmetric(
+    eₕ,dΩᶜ,dΓ,nΓ,γ::Float64,Pe::Float64,χ::Float64,ξ₀::Function)
+
+  # Viscous term
+  aʷ(u,v) = 
+    ∫( ( εᶜ(u,nΓ)⊙εᵈ(v,nΓ) + divᶜ(u,nΓ)⋅divᶜ(v,nΓ) + 
+         2*(u⋅iy)*(v⋅iy) + divᶜ(u,nΓ)*(v⋅iy) + 
+         divᶜ(v,nΓ)*(u⋅iy) )*y )dΓ
+
+  # Friction term
+  aᶠ(u,v) = ∫( χ*(u⋅v)*y )dΓ
+
+  # Activity function (relates myosin concentration to active stress)
+  ξ(e) = 2.0 * e*e / ( 1.0 + e*e )
+
+  # Active force term
+  f(μ,e) = ∫( Pe * ( -(divᶜ(μ,nΓ)+μ⋅iy)*(ξ∘(e)) ) * ξ₀ )dΓ
+
+  # Stabilisation term for velocity
+  sᵘ(υ,μ) = ∫( γ * ((nΓ⋅ε(υ))⊙(nΓ⋅ε(μ))) )dΩᶜ
+
+  # Rigid body motion and volum constraint
+  RB¹ = VectorValue(1.0,0.0)
+  r¹(u,ℓ) = ∫( ( u⋅(ℓ*RB¹) )*y )dΓ
+  r²(u,ℓ) = ∫( ( u⋅(ℓ*nΓ ) )*y )dΓ
+
+  aᵛ((υ,l¹,l²),(μ,ℓ¹,ℓ²)) =
+    aʷ(υ,μ) + aᶠ(υ,μ) + sᵘ(υ,μ) + 
+    r¹(υ,ℓ¹) + r¹(μ,l¹) + r²(υ,ℓ²) + r²(μ,l²)
+  bᵛ((μ,ℓ¹,ℓ²)) = f(μ,eₕ)
+
+  aᵛ, bᵛ
+end
+
 function cortical_flow_problem_axisymmetric(ulₕ,plₕ,eₕ,dΩᶜ,dΓ,nΓ,
     γ::Float64,Pe::Float64,μˡ::Float64,R::Float64,ξ₀::Function)
 

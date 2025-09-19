@@ -33,3 +33,9 @@ function postprocess_all(φ,Ωˡ,Ωᶜ,eₕ,υₕ,ulₕ,plₕ;i=0,of=1,name="plt
     writevtk(Ωˡ,name*"_blk_$i",cellfields=["LS"=>φ.φ,"uₕ"=>ulₕ,"pₕ"=>plₕ],nsubcells=4)
   end
 end
+
+function postprocess_all(φ,Ωᶜ,eₕ,υₕ;i=0,of=1,name="plt")
+  if ( i % of == 0 )
+    writevtk(Ωᶜ,name*"_sur_$i",cellfields=["LS"=>φ.φ,"uₕ"=>υₕ,"eₕ"=>eₕ],nsubcells=4)
+  end
+end
