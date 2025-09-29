@@ -11,7 +11,7 @@ function plotting(ylab,po,pPNG,i)
   plot(po)
   xlabel!("ξ[μm]")
   ylabel!(ylab)
-  savefig(pPNG*"rho"*i*".png")
+  savefig(pPNG*"$ylab"*i*".png")
 end
 
 function conservation(sMCAu,sMCAb,Minitial)
@@ -234,7 +234,8 @@ function run_mechanochemical_axisymmetric(χ,λ⁻²,η,T,Δt,part,
 
 
   #Now for v
-  aᵥ(MCA_b,v,w) =  ∫( ( η * (∇ᵈ(v,nΓ)⋅∇ᵈ(w,nΓ)) )*y )dΓ + ∫( ( (χ*MCA_b) * (v*w) )*y )dΓ
+  aᵥ(MCA_b,v,w) =  ∫( ( η * (
+    (v,nΓ)⋅∇ᵈ(w,nΓ)) )*y )dΓ + ∫( ( (χ*MCA_b) * (v*w) )*y )dΓ
   bᵥ(w,uh_MCAb,uh_x_old,uh_rho) = m(uh_MCAb,Δt,uh_x,w) - m(uh_MCAb,Δt,uh_x_old,w) + 
     ∫( ( σₐ₀*(w*(∇ᵈ(uh_rho,nΓ)⋅(TensorValue(0.0,-1.0,1.0,0.0)⋅nΓ) )) )*y )dΓ # ∫(( gradrho*w )*y )dΓ no feedback is ∫( w*∇σₐ )dΓ
   Aᵥ(v,w) = aᵥ(uh_MCAb,v,w) + s₀v(v,w)

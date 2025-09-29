@@ -1,6 +1,23 @@
 iy(x) = VectorValue( 0.0, 1.0 / x[2] ); y(x) = x[2]
 
-function cortical_flow_problem_axisymmetric(
+
+function rac_rho_weak_forms2(Δt,dᵃ,dᵇ,Drac,Drho,nΓ,dΓ)
+  #DEFINING the equations for Rac and Rho
+  m2(Δt,A,w) = ∫( ( (A*w)/Δt )*y )dΓ
+  a_rac(rac,w) = (1/dᵃ) * m2(Δt,rac,w) + 
+    ∫( ( Drac * (∇ᵈ(rac,nΓ)⋅∇ᵈ(w,nΓ)) )*y )dΓ + ∫( ( w*rac )*y )dΓ
+  b_rac(w,rho,α₀v,rac_old) = (1/dᵃ) * m2(Δt,rac_old,w) +   ∫( ( w*(α₀v)/(1+rho*rho) )*y )dΓ   
+ 
+  a_rho(rho,w) = (1/dᵇ)*m2(Δt,rho,w) + 
+    ∫( ( Drho * (∇ᵈ(rho,nΓ)⋅∇ᵈ(w,nΓ)) )*y )dΓ + ∫( ( w*rho )*y )dΓ # + ∫( ( λʳᴬ*((rho*rho*rho)*w) )*y )dΓ  
+  b_rho(w,rac,β₀v,rho_old) = (1/dᵇ)*m2(Δt,rho_old,w) + ∫( ( w*(β₀v)/(1+rac*rac) )*y )dΓ 
+
+  a_rac, b_rac, a_rho, b_rho
+end
+
+
+
+function cortical_flow_problem_axisymmetricOG(
     eₕ,dΩᶜ,dΓ,nΓ,γ::Float64,Pe::Float64,χ::Float64,ξ₀::Function)
 
   # Viscous term
@@ -23,13 +40,48 @@ function cortical_flow_problem_axisymmetric(
 
   # Rigid body motion and volum constraint
   RB¹ = VectorValue(1.0,0.0)
-  r¹(u,ℓ) = ∫( ( u⋅(ℓ*RB¹) )*y )dΓ
-  r²(u,ℓ) = ∫( ( u⋅(ℓ*nΓ ) )*y )dΓ
+  r¹(u,ℓ) = ∫( ( u⋅(ℓ*RB¹ ) )*y )dΓ#∫( ( RB¹⋅(ℓ*u) )*y )dΓ#
+  r²(u,ℓ) = ∫( ( u⋅(ℓ*nΓ ) )*y )dΓ # nΓ⋅(ℓ*u) )*y )dΓ # u⋅(ℓ*nΓ ) )*y )dΓ
 
   aᵛ((υ,l¹,l²),(μ,ℓ¹,ℓ²)) =
     aʷ(υ,μ) + aᶠ(υ,μ) + sᵘ(υ,μ) + 
     r¹(υ,ℓ¹) + r¹(μ,l¹) + r²(υ,ℓ²) + r²(μ,l²)
   bᵛ((μ,ℓ¹,ℓ²)) = f(μ,eₕ)
+
+  aᵛ, bᵛ
+end
+
+function cortical_flow_problem_axisymmetric(
+    ρₕ,dΩᶜ,dΓ,nΓ,γ::Float64,Pe::Float64,χ::Float64,ξ₀)
+
+  # Viscous term
+  aʷ(u,v) = 
+    ∫( ( εᶜ(u,nΓ)⊙εᵈ(v,nΓ) + divᶜ(u,nΓ)⋅divᶜ(v,nΓ) + 
+         2*(u⋅iy)*(v⋅iy) + divᶜ(u,nΓ)*(v⋅iy) + 
+         divᶜ(v,nΓ)*(u⋅iy) )*y )dΓ
+
+  # Friction term
+  aᶠ(u,v) = ∫( χ*(u⋅v)*y )dΓ
+
+  # Activity function (relates Rho concentration to active stress)
+  #ξ(e) = 2.0 * e*e / ( 1.0 + e*e )
+  #ξ(ρ) = ∇ᵈ(ρ,nΓ)#⋅(TensorValue(0.0,-1.0,1.0,0.0)⋅nΓ)#divᶜ( ρ,nΓ)
+
+  # Active force term
+  f(μ, ρ) = ∫( ( -(divᶜ(μ,nΓ)+μ⋅iy)*(∇ᵈ(ρ,nΓ)⋅(TensorValue(0.0,-1.0,1.0,0.0)⋅nΓ)) ) * ξ₀ )dΓ
+
+  # Stabilisation term for velocity
+  sᵘ(υ,μ) = ∫( γ * ((nΓ⋅ε(υ))⊙(nΓ⋅ε(μ))) )dΩᶜ
+
+  # Rigid body motion and volum constraint
+  RB¹ = VectorValue(1.0,0.0)
+  r¹(u,ℓ) = ∫( ( RB¹⋅(ℓ*u) )*y )dΓ
+  r²(u,ℓ) = ∫( ( u⋅(ℓ*nΓ ) )*y )dΓ
+
+  aᵛ((υ,l¹,l²),(μ,ℓ¹,ℓ²)) =
+    aʷ(υ,μ) + aᶠ(υ,μ) + sᵘ(υ,μ) + 
+    r¹(υ,ℓ¹) + r¹(μ,l¹) + r²(υ,ℓ²) + r²(μ,l²)
+  bᵛ((μ,ℓ¹,ℓ²)) = f(μ, ρₕ)
 
   aᵛ, bᵛ
 end

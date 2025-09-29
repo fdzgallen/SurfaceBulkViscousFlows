@@ -1,4 +1,7 @@
+include("Plots_RhoRacSinglet.jl")
+
 function surface_viscous_flows_axisymmetric(
+            dᵃ,α₀,Drac,αopto,dᵇ,β₀,Drho,βopto,wrac,
             domain::Tuple{Vararg{Float64}},
             ls::AlgoimCallLevelSetFunction,
             Pe::Float64,
@@ -113,12 +116,15 @@ function surface_viscous_flows_axisymmetric(
                                dirichlet_masks=[(false,true)])
     # e-surface
     Vᵉ = TestFESpace(Ωᶜ,reffeᵉ)
+    # Rac-Rho surface
+    Vᴿ = TestFESpace(Ωᶜ,reffeᵉ)
     # Lagrange multipliers
     Vˡ = ConstantFESpace(bgmodel)
 
     # Trial FE spaces
     Uʷ = TrialFESpace(Vʷ)
     Uᵉ = TrialFESpace(Vᵉ)
+    Uᴿ = TrialFESpace(Vᴿ)
     Uˡ = TrialFESpace(Vˡ)
 
     # Multifield FE spaces
@@ -131,17 +137,33 @@ function surface_viscous_flows_axisymmetric(
     Yʳ = MultiFieldFESpace([Vᵉ,Vˡ])
     Xʳ = MultiFieldFESpace([Uᵉ,Uˡ])
 
-    Xᵛ,Yᵛ,Xʳ,Yʳ,Uᵉ,Vᵉ,dΩᶜ,dΓ,nΓ,φ
+    Xᵛ,Yᵛ,Xʳ,Yʳ,Uᵉ,Vᵉ,Vᴿ,Uᴿ,dΩᶜ,dΓ,nΓ,φ
 
   end
+
+ # Lets make output folders
+  pVTU="./VTU/"*name
+  mkpath(pVTU)
+  pPNG="./PNG/"*name
+  mkpath(pPNG)
+  mkpath(pPNG*"Rac_time/") 
+  mkpath(pPNG*"Rho_time/") 
+  mkpath(pPNG*"Rac_time_initial/") 
+  mkpath(pPNG*"Rho_time_initial/") 
+ 
+  # Lets copy the code in the output folder to be able to check code used for each simulation
+  cp(@__FILE__, pPNG*split(@__FILE__, "/")[end],force=true)
 
   # Time discretisation parameters
   t₀ = 0.0
   Δt = Δt₀
   u₀ = VectorValue(0.0,0.0)
   m₀ = 2.0
+  R2=1
+  R=1
+  nΔt = trunc(Int,T/Δt)
 
-  Xᵛ,Yᵛ,Xʳ,Yʳ,Uᵉ,Vᵉ,dΩᶜ,dΓ,nΓ,φ = update_all!(0,t₀,Δt,u₀,m₀)
+  Xᵛ,Yᵛ,Xʳ,Yʳ,Uᵉ,Vᵉ,Vᴿ,Uᴿ,dΩᶜ,dΓ,nΓ,φ = update_all!(0,t₀,Δt,u₀,m₀)
 
   # *** WEAK FORM PARAMETERS ***
   ξ(e) = 2.0 * e*e / ( 1.0 + e*e )
@@ -167,6 +189,85 @@ function surface_viscous_flows_axisymmetric(
   
   tol = 1e-8
 
+  #Building the vectors used for introducing opto influence as an increase in α and β
+  arclength(x) = R2 * atan(x[2],-x[1]) # Arc length for sphere
+  α₀opto(x) = α₀
+  β₀opto(x) = β₀
+
+  α₀opto2(x) = α₀ + αopto * exp( -0.5 * ( arclength(x)-π*R2 )^2 / ((wrac)^2) )
+  β₀opto2(x) = β₀ + βopto * exp( -0.5 * ( arclength(x))^2       / ((wrac)^2) )
+
+  γ₀ = 0.1  / h # TODO: Eric reviews the scaling with h
+  γ₀R =  0.1  / h 
+  m₀opto(u,v) = ∫( u*v )dΓ
+  s₀opto(u,v) = ∫( γ₀*((nΓ⋅∇(u))⊙(nΓ⋅∇(v))) )dΩᶜ
+  s₀R(u,v) = ∫( γ₀R*((nΓ⋅∇(u))⊙(nΓ⋅∇(v))) )dΩᶜ
+
+  A₀opto(u,v) = m₀opto(u,v) + s₀opto(u,v)
+  bα₀opto(v) = m₀opto(α₀opto,v)
+  bβ₀opto(v) = m₀opto(β₀opto,v)
+  bα₀opto2(v) = m₀opto(α₀opto2,v)
+  bβ₀opto2(v) = m₀opto(β₀opto2,v)
+
+  op_α₀ = AffineFEOperator(A₀opto,bα₀opto2,Uᴿ,Vᴿ)
+  op_β₀ = AffineFEOperator(A₀opto,bβ₀opto2,Uᴿ,Vᴿ)
+
+  α₀v = solve(op_α₀)
+  β₀v = solve(op_β₀)
+
+  #Rac and Rho initialization
+  uh_rac = interpolate_everywhere(0.0,Uᴿ) 
+  uh_rho = interpolate_everywhere(4.0,Uᴿ) 
+  uh_rac_old = uh_rac
+  uh_rho_old = uh_rho
+  a_rac, b_rac, a_rho, b_rho = rac_rho_weak_forms2(Δt,dᵃ,dᵇ,Drac,Drho,nΓ,dΓ)
+ 
+  #SOLVE Rac AT t=0
+  Arac(rac,w) = a_rac(rac,w) + s₀R(rac,w)
+  Brac(w) = b_rac(w,uh_rho,α₀v,uh_rac_old) #(w,rho,α₀v,rac_old)
+  op_rac = AffineFEOperator(Arac,Brac,Uᴿ,Vᴿ)
+  uh_rac = solve(op_rac)
+  uh_rac_old = uh_rac
+  #SOLVE Rho AT t=0
+  Arho(rho,w) = a_rho(rho,w) + s₀R(rho,w)
+  Brho(w) = b_rho(w,uh_rac,β₀v,uh_rho_old) #(w,rac,β₀v,rho_old)
+  op_rho = AffineFEOperator(Arho,Brho,Uᴿ,Vᴿ)
+  uh_rho = solve(op_rho) 
+  uh_rho_old = uh_rho
+  
+  # Extract quadrature points and arc length array at every cell
+  xΓ = dΓ.quad.cell_point.values
+  xΓ = lazy_map(Reindex(xΓ),dΓ.quad.cell_point.ptrs)     # 2D array of xΓ (1 array per cell)
+  alenΓ = lazy_map(Broadcasting(x->atan(x[2],-x[1])),xΓ) # Following cell order
+  flat_xΓ = vcat(xΓ...)                                  # 1D "flattened" array of xΓ
+  flat_alenΓ = vcat(alenΓ...)
+  num_qpoints = length(flat_xΓ)
+  perm=sortperm(flat_alenΓ) # Permutation to order by increasing arclength
+  flat_alenΓ = R2*flat_alenΓ[perm]
+
+  ract = zeros(trunc(Int,T/Δt)+1,num_qpoints)
+  rhot = zeros(trunc(Int,T/Δt)+1,num_qpoints)
+  vt = zeros(trunc(Int,T/Δt)+1,num_qpoints)
+  _vt = vcat(lazy_map(υₕ,xΓ)...) 
+  _vt = _vt[perm]
+  #vv = get_cell_dof_values(_vt)
+  vt[1,:] .= √(_vt⋅_vt)
+
+for ti in 1:30 
+    op_rho = AffineFEOperator(Arho,Brho,Uᴿ,Vᴿ)
+    uh_rho = solve(op_rho)
+    uh_rho_old = uh_rho
+    op_rac = AffineFEOperator(Arac,Brac,Uᴿ,Vᴿ)
+    uh_rac = solve(op_rac)
+    uh_rac_old = uh_rac 
+    ractt = vcat(lazy_map(uh_rac,xΓ)...)
+    rhott = vcat(lazy_map(uh_rho,xΓ)...)
+    ractt[:] = ractt[perm]
+    rhott[:] = rhott[perm]
+    plotting("rac",ractt[:],pPNG*"Rac_time_initial/","$ti")
+    plotting("rho",rhott[:],pPNG*"Rho_time_initial/","$ti")
+  end
+
   while t < T + tol
 
     @info "Time step $i, time $t and time step $Δt"
@@ -175,7 +276,7 @@ function surface_viscous_flows_axisymmetric(
     Aᵛ = nothing
 
     aᵛ,bᵛ = cortical_flow_problem_axisymmetric(
-        eₕ,dΩᶜ,dΓ,nΓ,γʷ,Pe,χ,activity)
+        uh_rho,dΩᶜ,dΓ,nΓ,γʷ,Pe,χ,activity)
     Aᵛ,Bᵛ = _assemble_problem(aᵛ,bᵛ,assemᵛ,Xᵛ,Yᵛ,Aᵛ)
     υₕ,_ = _solve_problem(Aᵛ,Bᵛ,Xᵛ,ps)
 
@@ -187,7 +288,7 @@ function surface_viscous_flows_axisymmetric(
     i = i + 1
     t = t + Δt
 
-    Xᵛ,Yᵛ,Xʳ,Yʳ,Uᵉ,Vᵉ,dΩᶜ,dΓ,nΓ,φ = update_all!(i,t,Δt,υₕ,msₕ)
+    Xᵛ,Yᵛ,Xʳ,Yʳ,Uᵉ,Vᵉ,Vᴿ,Uᴿ,dΩᶜ,dΓ,nΓ,φ = update_all!(i,t,Δt,υₕ,msₕ)
 
     assemᵉ = SparseMatrixAssembler(Tm,Tv,Uᵉ,Vᵉ)
     aᵉ,bᵉ = transport_problem_axisymmetric(
@@ -195,6 +296,25 @@ function surface_viscous_flows_axisymmetric(
     opᵉ = AffineFEOperator(aᵉ,bᵉ,Uᵉ,Vᵉ,assemᵉ)
     eₕ = solve(ps,opᵉ)
 
+    op_rho = AffineFEOperator(Arho,Brho,Uᴿ,Vᴿ)
+    op_rac = AffineFEOperator(Arac,Brac,Uᴿ,Vᴿ)
+    uh_rac = solve(op_rac)
+    uh_rac_old = uh_rac
+    uh_rho = solve(op_rho) 
+    uh_rho_old = uh_rho
+    #vt[i+1,:] = vcat(lazy_map(υₕ,xΓ)...) 
+    #vt[i+1,:] = vt[i+1,perm]
+
+    ract[i,:] = vcat(lazy_map(uh_rac,xΓ)...)
+    rhot[i,:] = vcat(lazy_map(uh_rho,xΓ)...) 
+    ract[i,:] = ract[i,perm]
+    rhot[i,:] = rhot[i,perm]
+
+    plotting("rac",ract[i,:],pPNG*"Rac_time/","$i")
+    plotting("rho",rhot[i,:],pPNG*"Rho_time/","$i")
   end
+  
+  plots_run_singlet(nΔt,vt,ract,rhot,pPNG,
+   num_qpoints,π*R2,Δt₀,T,flat_alenΓ)  #nΔt,vt,ract,rhot,pPNG,   partition,L,Δt,T,xplot
 
 end
