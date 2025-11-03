@@ -15,7 +15,7 @@ ls = AlgoimCallLevelSetFunction(
   x -> VectorValue( 2.0 * x[1], 2.0 * x[2] ) )
 
 Pe = 30.0
-τᵈkₒ = 10.0
+τᵈkₒ = 0.0010
 n  = 30
 Δt = 0.0002
 T  = 0.20
@@ -27,8 +27,8 @@ dᵃ = 200.0  #deactivation
 Drac = 0.00005 #diffusion rate
 αopto = 5 # opto input for Rac 
 wrac = π/2.5
-χ  = 1000.0
-χ₀ = -200.0 
+χ₀ = 0.1
+χ  = 1.0
 
 #Rho Coefficients
 dᵇ = 200.0 #deactivation
@@ -37,15 +37,15 @@ Drho = 0.00005 #diffusion rate
 βopto = 0 # opto input for Rho 
 σₐ⁰ = 0.01
 
+De=0.00000001
 
-
-name="SurfaceViscousFlows/velocity_on/rho-rac 5 better friction sig_a=$σₐ⁰ T=$T dt=$Δt alpha=$α₀ beta=$β₀ da=$dᵃ db= $dᵇ Drac=Drho=$Drac/x0=$χ₀ x=$χ sigmarho=1 sigmaR=1 sa=1/"
+name="SurfaceViscousFlows/turnover/rho-rac 4 sig_a=$σₐ⁰ T=$T dt=$Δt alpha=$α₀ beta=$β₀ da=$dᵃ db= $dᵇ Drac=Drho=$Drac/tk=$τᵈkₒ x0=$χ₀ x=$χ sigmarho=1 sigmaR=1 sa=1/"
 mkpath(name)
 
 GridapPETSc.with() do
 
-  surface_viscous_flows_axisymmetric(
-    dᵃ,α₀,Drac,αopto,dᵇ,β₀,Drho,βopto,wrac,
+  surface_viscous_flows_axisymmetric_turnover(
+    dᵃ,α₀,Drac,αopto,dᵇ,β₀,Drho,βopto,wrac, De,
     domain,ls,Pe,n,Δt,T,σₐ⁰,χ₀,χ,output_frequency=output_frequency,
     writesol=true,initial_density=verification,γᶜ=1.0,τᵈkₒ=τᵈkₒ,
     name=name)

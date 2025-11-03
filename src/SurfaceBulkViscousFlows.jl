@@ -33,6 +33,7 @@ include("SurfaceBulkViscousFlowsAxisymmetric.jl")
 include("SurfaceBulkViscousFlows3D.jl")
 
 include("SurfaceViscousFlowsAxisymmetric.jl")
+include("SurfaceViscousFlowsAxisymmetric_turnover.jl")
 
 include("MechanochemicalAxisymmetric.jl")
 # include("SingletActinTurnover.jl")
@@ -49,6 +50,7 @@ export surface_bulk_viscous_flows_axisymmetric
 export surface_bulk_viscous_flows_3D
 
 export surface_viscous_flows_axisymmetric
+export surface_viscous_flows_axisymmetric_turnover
 
 export run_mechanochemical_axisymmetric
 export run_singlet_axisymmetric

@@ -4,11 +4,13 @@ iy(x) = VectorValue( 0.0, 1.0 / x[2] ); y(x) = x[2]
 function rac_rho_weak_forms2(Δt,dᵃ,dᵇ,Drac,Drho,nΓ,dΓ)
   #DEFINING the equations for Rac and Rho
   m2(Δt,A,w) = ∫( ( (A*w)/Δt )*y )dΓ
-  a_rac(rac,w) = (1/dᵃ) * m2(Δt,rac,w) + ∫( ( Drac * (∇ᵈ(rac,nΓ)⋅∇ᵈ(w,nΓ)) )*y )dΓ + ∫( ( w*rac )*y )dΓ
+  advection(rac,w,v) =  ∫( (w*( ∇ᵈ(rac,nΓ)⋅v + rac*divᶜ(v,nΓ))  )*y )dΓ
+
+  a_rac(rac,w,v) = (1/dᵃ) * m2(Δt,rac,w)   + ∫( ( Drac * (∇ᵈ(rac,nΓ)⋅∇ᵈ(w,nΓ)) )*y )dΓ + ∫( ( w*rac )*y )dΓ
   b_rac(w,rho,α₀v,rac_old) = (1/dᵃ) * m2(Δt,rac_old,w) +   ∫( ( w*(α₀v)/(1+rho*rho) )*y )dΓ   
  
-  a_rho(rho,w) = (1/dᵇ)*m2(Δt,rho,w) + 
-    ∫( ( Drho * (∇ᵈ(rho,nΓ)⋅∇ᵈ(w,nΓ)) )*y )dΓ + ∫( ( w*rho )*y )dΓ # + ∫( ( λʳᴬ*((rho*rho*rho)*w) )*y )dΓ  
+  a_rho(rho,w,v) = (1/dᵇ)*m2(Δt,rho,w) + advection(rho,w,v) +
+    ∫( ( Drho * (∇ᵈ(rho,nΓ)⋅∇ᵈ(w,nΓ)) )*y )dΓ   + ∫( ( w*rho )*y )dΓ # + ∫( ( λʳᴬ*((rho*rho*rho)*w) )*y )dΓ  
   b_rho(w,rac,β₀v,rho_old) = (1/dᵇ)*m2(Δt,rho_old,w) + ∫( ( w*(β₀v)/(1+rac*rac) )*y )dΓ 
 
   a_rac, b_rac, a_rho, b_rho
@@ -19,7 +21,7 @@ function rac_rho_weak_forms_conserved(Δt,dᵃ,dᵇ,Drac,Drho,nΓ,dΓ)
   #DEFINING the equations for Rac and Rho
   #TODO add y's, convert into axisymmetric
   m2(Δt,A,w) = ∫( ( (A*w)/Δt )*y )dΓ
-  a_rac(rac,w) = (1/dᵃ)*m2(Δt,rac,w) + ∫( ( Drac * (∇ᵈ(rac,nΓ)⋅∇ᵈ(w,nΓ)) )*y )dΓ + ∫(w*rac)dΓ  
+  a_rac(rac,w) = (1/dᵃ)*m2(Δt,rac,w)  + ∫( ( Drac * (∇ᵈ(rac,nΓ)⋅∇ᵈ(w,nΓ)) )*y )dΓ + ∫(w*rac)dΓ  
   b_rac(w,rho,α₀v,rac_i,rac_old) =  (1/dᵃ)*m2(Δt,rac_old,w) + ∫( w*(rac_i)*(α₀v/(1+rho*rho))*y )dΓ  
   a_rac_i(rac_i,w) = ∫(((w*(rac_i))*y))dΓ  
   b_rac_i(w,a_sum) = ∫((w*(a_t - a_sum))*y)dΓ
@@ -68,8 +70,64 @@ function cortical_flow_problem_axisymmetricOG(
   aᵛ, bᵛ
 end
 
+function cortical_flow_problem_axisymmetric_turnover(
+    ρₕ,R,eₕ,dΩᶜ,dΓ,nΓ,γ::Float64,Pe::Float64,χᵣ::Float64,χ₀::Float64,ξ₀,σₐ⁰,
+  sigmaₐ⁰,  sigmaρ⁰, sigmaR⁰)
+
+  # Viscous term
+  aʷ(u,v,e) = 
+    ∫( ( e*εᶜ(u,nΓ)⊙εᵈ(v,nΓ) + e*divᶜ(u,nΓ)⋅divᶜ(v,nΓ) + 
+         2*e*(u⋅iy)*(v⋅iy) + e*divᶜ(u,nΓ)*(v⋅iy) + 
+         e*divᶜ(v,nΓ)*(u⋅iy) )*y )dΓ
+
+  χ(R) = (χ₀+χᵣ*R)
+
+  # Friction term
+  aᶠ(u,v,R) = ∫(χ(R)*(u⋅v)*y )dΓ
+
+  # Activity function (relates Rho concentration to active stress) 
+  function sigmaₐ(ρ,R)
+      sigmaₐ = sigmaₐ⁰ + sigmaρ⁰ * ρ - sigmaR⁰ * R
+      sigmaₐ > 0 ? sigmaₐ : zero(typeof(sigmaₐ))
+  end
+  # Active force term
+  f(μ, ρ,R,e) = ∫( e*( -(divᶜ(μ,nΓ)+μ⋅iy)*(sigmaₐ∘(ρ,R))*σₐ⁰ ) * ξ₀ )dΓ 
+
+  # Stabilisation term for velocity
+  sᵘ(υ,μ) = ∫( γ * ((nΓ⋅ε(υ))⊙(nΓ⋅ε(μ))) )dΩᶜ
+
+  # Rigid body motion and volum constraint
+  RB¹ = VectorValue(1.0,0.0)
+  r¹(u,ℓ) = ∫( ( RB¹⋅(ℓ*u) )*y )dΓ
+  r²(u,ℓ) = ∫( ( u⋅(ℓ*nΓ ) )*y )dΓ
+
+  aᵛ((υ,l¹,l²),(μ,ℓ¹,ℓ²)) = 
+    aʷ(υ,μ,eₕ) + aᶠ(υ,μ,R) + sᵘ(υ,μ) + r¹(υ,ℓ¹) + r¹(μ,l¹) + r²(υ,ℓ²) + r²(μ,l²)
+  bᵛ((μ,ℓ¹,ℓ²)) = f(μ, ρₕ,R,eₕ)
+
+  aᵛ, bᵛ 
+end 
+
+function turnover_axisymmetric(u,eₕ,dΓ,dΩᶜ,nΓ,De,
+    dt::Float64,γ::Float64,τᵈkₒ::Float64)
+  
+  m(e,ε)  = ∫( (1/dt)*(e*ε)*y )dΓ
+  sᵈ(e,ε) = ∫( ( ∇ᵈ(e,nΓ)⋅∇ᵈ(ε,nΓ) )*y )dΓ
+  c(e,ε)  = ∫( ( (u⋅∇ᵈ(e,nΓ))*ε + (tr(∇ᵈ(u,nΓ))+u⋅iy)*(e*ε) )*y )dΓ #TODO Ask Eric about this
+  #advection(rac,w,v) =  ∫( (w*( ∇ᵈ(rac,nΓ)⋅v + rac*divᶜ(v,nΓ))  )*y )dΓ
+  r(e,ε)  = ∫( τᵈkₒ*(e*ε)*y )dΓ
+  d(e,ε) = ∫( ( De * (∇ᵈ(e,nΓ)⋅∇ᵈ(ε,nΓ)) )*y )dΓ
+  l(ε)    = ∫( τᵈkₒ*ε*y )dΓ
+#  s(υ,μ)  = ∫( γ*((nΓ⋅∇(υ))⊙(nΓ⋅∇(μ))) )dΩᶜ
+
+  aᵉ(e,ε) = m(e,ε) + c(e,ε) + r(e,ε) + d(e,ε) + sᵈ(e,ε) #+ s(e,ε)
+  bᵉ(ε)   = m(eₕ,ε) + l(ε)
+
+  aᵉ,bᵉ
+end
+
 function cortical_flow_problem_axisymmetric(
-    ρₕ,R,dΩᶜ,dΓ,nΓ,γ::Float64,Pe::Float64,χ::Float64,χ₀::Float64,ξ₀)
+    ρₕ,R,dΩᶜ,dΓ,nΓ,γ::Float64,Pe::Float64,χᵣ::Float64,χ₀::Float64,ξ₀,σₐ⁰,sigmaₐ⁰,  sigmaρ⁰, sigmaR⁰)
 
   # Viscous term
   aʷ(u,v) = 
@@ -77,15 +135,23 @@ function cortical_flow_problem_axisymmetric(
          2*(u⋅iy)*(v⋅iy) + divᶜ(u,nΓ)*(v⋅iy) + 
          divᶜ(v,nΓ)*(u⋅iy) )*y )dΓ
 
+  χ(R) = (χ₀+χᵣ*R)
+
   # Friction term
-  aᶠ(u,v,R) = ∫( (χ₀+χ*R)*(u⋅v)*y )dΓ
+  aᶠ(u,v,R) = ∫(χ(R)*(u⋅v)*y )dΓ
 
   # Activity function (relates Rho concentration to active stress)
   #ξ(e) = 2.0 * e*e / ( 1.0 + e*e )
   #ξ(ρ) = ∇ᵈ(ρ,nΓ)#⋅(TensorValue(0.0,-1.0,1.0,0.0)⋅nΓ)#divᶜ( ρ,nΓ)
-
+  #TODO  
+  function sigmaₐ(ρ,R)
+      sigmaₐ = sigmaₐ⁰ + sigmaρ⁰ * ρ - sigmaR⁰ * R
+      sigmaₐ > 0 ? sigmaₐ : zero(typeof(sigmaₐ))
+  end
   # Active force term
-  f(μ, ρ,R) = ∫( ( -(divᶜ(μ,nΓ)+μ⋅iy)*(∇ᵈ(ρ,nΓ)⋅(TensorValue(0.0,-1.0,1.0,0.0)⋅nΓ) - ∇ᵈ(R,nΓ)⋅(TensorValue(0.0,-1.0,1.0,0.0)⋅nΓ)) ) * ξ₀ )dΓ
+  f(μ, ρ,R) = ∫( ( -(divᶜ(μ,nΓ)+μ⋅iy)*(sigmaₐ∘(ρ,R))*σₐ⁰ ) * ξ₀ )dΓ
+# f(μ,e) = ∫( Pe * ( -(divᶜ(μ,nΓ)+μ⋅iy)*(ξ∘(e)) ) * ξ₀ )dΓ OG FUNCTION
+# f(μ,e) = ∫( Pe * ( -(divᶜ(μ,nΓ))*(ξ∘(e)) ) * ξ₀ )dΓ TRANSPORT VERSION
 
   # Stabilisation term for velocity
   sᵘ(υ,μ) = ∫( γ * ((nΓ⋅ε(υ))⊙(nΓ⋅ε(μ))) )dΩᶜ

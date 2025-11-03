@@ -221,7 +221,7 @@ function run_mechanochemical_axisymmetric(χ,λ⁻²,η,T,Δt,part,
   
   #diri_v(p,v₀,vₗ) = p[1] < 0 ? v₀ : vₗ # v₀ on negative x coordinate, vₗ otherwise  
  # CTE = diri_x(p,x₀,xₗ)
-#  interpolate_everywhere(CTE,Q0)
+ # interpolate_everywhere(CTE,Q0)
   #AUX(x)=(∇ᵈ(x,nΓ)⋅w)
   
   #We will add x_old in B() afterwards

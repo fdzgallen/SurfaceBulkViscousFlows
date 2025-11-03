@@ -174,9 +174,6 @@ function surface_viscous_flows_axisymmetric(
   # ** e-stabilisation **
   γᵉ = γᶜ/h
 
-  # Compute initial condition for myosin
-  _eₕ = initial_density(Uᵉ,Xʳ,Yʳ,dΓ,dΩᶜ,nΓ)
-  eₕ = interpolate_everywhere(_eₕ,Uᵉ)
 
   # Compute initial condition for surface velocity
   _υₕ(x) = VectorValue(0.0,0.0)
@@ -218,24 +215,24 @@ function surface_viscous_flows_axisymmetric(
   β₀v = solve(op_β₀)
 
   #Rac and Rho initialization
-  uh_rac = interpolate_everywhere(0.0,Uᴿ) 
-  uh_rho = interpolate_everywhere(4.0,Uᴿ) 
-  uh_rac_old = uh_rac
-  uh_rho_old = uh_rho
-  a_rac, b_rac, a_rho, b_rho = rac_rho_weak_forms2(Δt,dᵃ,dᵇ,Drac,Drho,nΓ,dΓ)
+  Rₕ = interpolate_everywhere(0.0,Uᴿ) 
+  ρₕ = interpolate_everywhere(4.0,Uᴿ) 
+  Rₕ_old = Rₕ
+  ρₕ_old = ρₕ
+  a_R, b_R, a_ρ, b_ρ = rac_rho_weak_forms2(Δt,dᵃ,dᵇ,Drac,Drho,nΓ,dΓ)
  
   #SOLVE Rac AT t=0
-  Arac(rac,w) = a_rac(rac,w) + s₀R(rac,w)
-  Brac(w) = b_rac(w,uh_rho,α₀v,uh_rac_old) #(w,rho,α₀v,rac_old)
+  Arac(rac,w) = a_R(rac,w,υₕ) + s₀R(rac,w)
+  Brac(w) = b_R(w,ρₕ,α₀v,Rₕ_old) #(w,rho,α₀v,rac_old)
   op_rac = AffineFEOperator(Arac,Brac,Uᴿ,Vᴿ)
-  uh_rac = solve(op_rac)
-  uh_rac_old = uh_rac
+  Rₕ = solve(op_rac)
+  Rₕ_old = Rₕ
   #SOLVE Rho AT t=0
-  Arho(rho,w) = a_rho(rho,w) + s₀R(rho,w)
-  Brho(w) = b_rho(w,uh_rac,β₀v,uh_rho_old) #(w,rac,β₀v,rho_old)
+  Arho(rho,w) = a_ρ(rho,w,υₕ) + s₀R(rho,w)
+  Brho(w) = b_ρ(w,Rₕ,β₀v,ρₕ_old) #(w,rac,β₀v,rho_old)
   op_rho = AffineFEOperator(Arho,Brho,Uᴿ,Vᴿ)
-  uh_rho = solve(op_rho) 
-  uh_rho_old = uh_rho
+  ρₕ = solve(op_rho) 
+  ρₕ_old = ρₕ
   
   # Extract quadrature points and arc length array at every cell
   xΓ = dΓ.quad.cell_point.values
@@ -250,23 +247,34 @@ function surface_viscous_flows_axisymmetric(
   
   ract = zeros(nΔt,num_qpoints)
   rhot = zeros(nΔt,num_qpoints)
+  σₐt = zeros(nΔt,num_qpoints)
+  χt = zeros(nΔt,num_qpoints)
   vt = zeros(nΔt,num_qpoints)
-  _vt = vcat(lazy_map(υₕ,xΓ)...) 
-  _vt = _vt[perm]
-  #vv = get_cell_dof_values(_vt)
-  vt[1,:] .= √(_vt⋅_vt)
+  _vt = vcat(lazy_map(υₕ⋅(TensorValue(0.0,-1.0,1.0,0.0)⋅nΓ),xΓ)...) 
+  vt[1,:] = _vt[perm] 
 
-for ti in 1:100 
+
+  sigmaₐ⁰ = 1 
+  sigmaρ⁰ = 1
+  sigmaR⁰ = 1
+  function sigmaₐ(ρ,R)
+      sigmaₐ = sigmaₐ⁰ .+ sigmaρ⁰ * ρ .- sigmaR⁰ * R
+      #sigmaₐ > 0 ? sigmaₐ : zero(typeof(sigmaₐ))
+  end
+
+  χR(R) = (χ₀.+χ*R)
+
+  for ti in 1:100 
     op_rho = AffineFEOperator(Arho,Brho,Uᴿ,Vᴿ)
-    uh_rho = solve(op_rho)
-    uh_rho_old = uh_rho
+    ρₕ = solve(op_rho)
+    ρₕ_old = ρₕ
     op_rac = AffineFEOperator(Arac,Brac,Uᴿ,Vᴿ)
-    uh_rac = solve(op_rac)
-    uh_rac_old = uh_rac
-    sum_rac = ∑(∫(uh_rac)dΓ)
-    sum_rho = ∑(∫(uh_rho)dΓ)
-    ractt = vcat(lazy_map(uh_rac,xΓ)...)
-    rhott = vcat(lazy_map(uh_rho,xΓ)...)
+    Rₕ = solve(op_rac)
+    Rₕ_old = Rₕ
+    sum_R = ∑(∫(Rₕ)dΓ)
+    sum_ρ = ∑(∫(ρₕ)dΓ)
+    ractt = vcat(lazy_map(Rₕ,xΓ)...)
+    rhott = vcat(lazy_map(ρₕ,xΓ)...) 
     ractt[:] = ractt[perm]
     rhott[:] = rhott[perm]
     plotting("rac",ractt[:],pPNG*"Rac_time_initial/","$ti")
@@ -291,14 +299,14 @@ for ti in 1:100
 
     assemᵛ = SparseMatrixAssembler(Tm,Tv,Xᵛ,Yᵛ)
     Aᵛ = nothing
-
+    
     aᵛ,bᵛ = cortical_flow_problem_axisymmetric(
-        uh_rho,uh_rac,dΩᶜ,dΓ,nΓ,γʷ,Pe,χ,χ₀,σₐ⁰)
+        ρₕ,Rₕ,dΩᶜ,dΓ,nΓ,γʷ,Pe,χ,χ₀,activity,σₐ⁰,sigmaₐ⁰,  sigmaρ⁰, sigmaR⁰)
     Aᵛ,Bᵛ = _assemble_problem(aᵛ,bᵛ,assemᵛ,Xᵛ,Yᵛ,Aᵛ)
     υₕ,_ = _solve_problem(Aᵛ,Bᵛ,Xᵛ,ps)
-
+    υₕtan = to_tangent_vector(υₕ,nΓ) #υₕ⋅(TensorValue(0.0,-1.0,1.0,0.0)⋅nΓ)#⋅(VectorValue(0.0,-1.0,1.0,0.0)⋅nΓ)
     writesol && postprocess_all(φ,dΩᶜ.quad.trian,
-      uh_rac,uh_rho,υₕ,i=i,of=output_frequency,name=pVTU)
+      Rₕ,ρₕ,υₕ,υₕtan,i=i,of=output_frequency,name=pVTU)
 
     msₕ = get_maximum_magnitude_with_dirichlet(υₕ)
 
@@ -309,29 +317,30 @@ for ti in 1:100
 
     op_rho = AffineFEOperator(Arho,Brho,Uᴿ,Vᴿ)
     op_rac = AffineFEOperator(Arac,Brac,Uᴿ,Vᴿ)
-    uh_rac = solve(op_rac)
-    uh_rac_old = uh_rac
-    uh_rho = solve(op_rho) 
-    uh_rho_old = uh_rho
-
-    ract[i,:] = vcat(lazy_map(uh_rac,xΓ)...)
-    rhot[i,:] = vcat(lazy_map(uh_rho,xΓ)...) 
+    Rₕ = solve(op_rac)
+    Rₕ_old = Rₕ
+    ρₕ = solve(op_rho) 
+    ρₕ_old = ρₕ 
+    
+    ract[i,:] = vcat(lazy_map(Rₕ,xΓ)...)
+    rhot[i,:] = vcat(lazy_map(ρₕ,xΓ)...) 
     ract[i,:] = ract[i,perm]
-    rhot[i,:] = rhot[i,perm]
-
-    # fa(μ, ρ,R) = ∫( ( -(divᶜ(μ,nΓ)+μ⋅iy)*(∇ᵈ(ρ,nΓ)⋅(TensorValue(0.0,-1.0,1.0,0.0)⋅nΓ) - ∇ᵈ(R,nΓ)⋅(TensorValue(0.0,-1.0,1.0,0.0)⋅nΓ)) ) * χ₀ )dΓ
-    # papa(v) = fa(v,uh_rho,uh_rac)
-    # aux_ = AffineFEOperator(A₀opto,papa,Uᴿ,Vᴿ) 
-    # aux = solve(aux_)
-    # plotting("gradients",get_cell_dof_values(aux),pPNG,"$i")
+    rhot[i,:] = rhot[i,perm]  
+    σₐt[i,:] =    sigmaₐ⁰ .+ sigmaρ⁰ * rhot[i,:] .- sigmaR⁰ * ract[i,:] #sigmaₐ(rhot[i,:],ract[i,:]) 
+    χt[i,:] =  χ₀ .+ χ*ract[i,:] #χR(ract[i,:]) 
+    _vt = υₕ⋅(TensorValue(0.0,-1.0,1.0,0.0)⋅nΓ)
+    vt[i,:]  = vcat(lazy_map(_vt,xΓ)...) 
+    vt[i,:] = vt[i,perm] 
+    
     plotting("rac",ract[i,:],pPNG*"Rac_time/","$i")
-    plotting("rho",rhot[i,:],pPNG*"Rho_time/","$i")
+    plotting("rho",rhot[i,:],pPNG*"Rho_time/","$i") 
   end
   
   plots_run_singlet(nΔt,vt,ract,rhot,pPNG,
-   num_qpoints,π*R2,Δt₀,T,flat_alenΓ)  #nΔt,vt,ract,rhot,pPNG,   partition,L,Δt,T,xplot
+   num_qpoints,π*R2,Δt₀,T,flat_alenΓ,σₐt,χt)  #nΔt,vt,ract,rhot,pPNG,   partition,L,Δt,T,xplot
 
 end
+
 
 
 
@@ -553,38 +562,38 @@ function surface_viscous_flows_axisymmetric_conserved(
   β₀v = solve(op_β₀)
 
   #Rac and Rho initialization
-  uh_rac = interpolate_everywhere(0.0,Uᴿ) 
-  uh_rho = interpolate_everywhere(0.0,Uᴿ) 
-  uh_rac_i = interpolate_everywhere(rac_total/(π*R2),Uᴿ) 
-  uh_rho_i = interpolate_everywhere(rho_total/(π*R2),Uᴿ) 
-  uh_rac_old = uh_rac
-  uh_rho_old = uh_rho
-  a_rac, b_rac, a_rho, b_rho, a_rac_i, b_rac_i, a_rho_i, b_rho_i = rac_rho_weak_forms_conserved(Δt,dᵃ,dᵇ,Drac,Drho,nΓ,dΓ)
+  Rₕ = interpolate_everywhere(0.0,Uᴿ) 
+  ρₕ = interpolate_everywhere(0.0,Uᴿ) 
+  Rₕ_i = interpolate_everywhere(rac_total/(π*R2),Uᴿ) 
+  ρₕ_i = interpolate_everywhere(rho_total/(π*R2),Uᴿ) 
+  Rₕ_old = Rₕ
+  ρₕ_old = ρₕ
+  a_R, b_R, a_ρ, b_ρ, a_R_i, b_R_i, a_ρ_i, b_ρ_i = rac_rho_weak_forms_conserved(Δt,dᵃ,dᵇ,Drac,Drho,nΓ,dΓ)
  
   #SOLVE Rac AT t=0
-  Arac(rac,w) = a_rac(rac,w) + s₀R(rac,w)
-  Brac(w) = b_rac(w,uh_rho,α₀v,uh_rac_i,uh_rac_old) #(w,rho,α₀v,rac_old)
+  Arac(rac,w) = a_R(rac,w) + s₀R(rac,w)
+  Brac(w) = b_R(w,ρₕ,α₀v,Rₕ_i,Rₕ_old) #(w,rho,α₀v,rac_old)
   op_rac = AffineFEOperator(Arac,Brac,Uᴿ,Vᴿ)
-  uh_rac = solve(op_rac)
-  uh_rac_old = uh_rac
-  sum_rac = ∑(∫(uh_rac)dΓ)
+  Rₕ = solve(op_rac)
+  Rₕ_old = Rₕ
+  sum_R = ∑(∫(Rₕ)dΓ)
   #Solve Rac inactive at t=0
-  Arac_i(rac_i,w) = a_rac_i(rac_i,w) + s₀R(rac_i,w)
-  Brac_i(w) = b_rac_i(w,sum_rac) #(w,rho,α₀v,rac_old)
+  Arac_i(rac_i,w) = a_R_i(rac_i,w) + s₀R(rac_i,w)
+  Brac_i(w) = b_R_i(w,sum_R) #(w,rho,α₀v,rac_old)
   op_rac_i = AffineFEOperator(Arac_i,Brac_i,Uᴿ,Vᴿ)
-  uh_rac_i = solve(op_rac_i)
+  Rₕ_i = solve(op_rac_i)
   #SOLVE Rho AT t=0
-  Arho(rho,w) = a_rho(rho,w) + s₀R(rho,w)
-  Brho(w) = b_rho(w,uh_rac,β₀v,uh_rho_old) #(w,rac,β₀v,rho_old)
+  Arho(rho,w) = a_ρ(rho,w) + s₀R(rho,w)
+  Brho(w) = b_ρ(w,Rₕ,β₀v,ρₕ_old) #(w,rac,β₀v,rho_old)
   op_rho = AffineFEOperator(Arho,Brho,Uᴿ,Vᴿ)
-  uh_rho = solve(op_rho) 
-  uh_rho_old = uh_rho
-  sum_rho = ∑(∫(uh_rho)dΓ)
+  ρₕ = solve(op_rho) 
+  ρₕ_old = ρₕ
+  sum_ρ = ∑(∫(ρₕ)dΓ)
   #Solve Rho inactive at t=0
-  Arho_i(rho_i,w) = a_rho_i(rho_i,w) + s₀R(rho_i,w)
-  Brho_i(w) = b_rho_i(w,sum_rho) #(w,rho,α₀v,rac_old)
+  Arho_i(rho_i,w) = a_ρ_i(rho_i,w) + s₀R(rho_i,w)
+  Brho_i(w) = b_ρ_i(w,sum_ρ) #(w,rho,α₀v,rac_old)
   op_rho_i = AffineFEOperator(Arho_i,Brho_i,Uᴿ,Vᴿ)
-  uh_rho_i = solve(op_rho_i)
+  ρₕ_i = solve(op_rho_i)
   
   # Extract quadrature points and arc length array at every cell
   xΓ = dΓ.quad.cell_point.values
@@ -609,21 +618,21 @@ function surface_viscous_flows_axisymmetric_conserved(
 
 for ti in 1:100 
     op_rho = AffineFEOperator(Arho,Brho,Uᴿ,Vᴿ)
-    uh_rho = solve(op_rho)
-    uh_rho_old = uh_rho
+    ρₕ = solve(op_rho)
+    ρₕ_old = ρₕ
     op_rac = AffineFEOperator(Arac,Brac,Uᴿ,Vᴿ)
-    uh_rac = solve(op_rac)
-    uh_rac_old = uh_rac
+    Rₕ = solve(op_rac)
+    Rₕ_old = Rₕ
 
     op_rho_i = AffineFEOperator(Arho_i,Brho_i,Uᴿ,Vᴿ)
-    uh_rho_i = solve(op_rho_i) 
+    ρₕ_i = solve(op_rho_i) 
     op_rac_i = AffineFEOperator(Arac_i,Brac_i,Uᴿ,Vᴿ)
-    uh_rac_i = solve(op_rac_i) 
+    Rₕ_i = solve(op_rac_i) 
 
-    sum_rac = ∑(∫(uh_rac)dΓ)
-    sum_rho = ∑(∫(uh_rho)dΓ)
-    ractt = vcat(lazy_map(uh_rac,xΓ)...)
-    rhott = vcat(lazy_map(uh_rho,xΓ)...)
+    sum_R = ∑(∫(Rₕ)dΓ)
+    sum_ρ = ∑(∫(ρₕ)dΓ)
+    ractt = vcat(lazy_map(Rₕ,xΓ)...)
+    rhott = vcat(lazy_map(ρₕ,xΓ)...)
     ractt[:] = ractt[perm]
     rhott[:] = rhott[perm]
     plotting("rac",ractt[:],pPNG*"Rac_time_initial/","$ti")
@@ -650,7 +659,7 @@ for ti in 1:100
     Aᵛ = nothing
 
     aᵛ,bᵛ = cortical_flow_problem_axisymmetric(
-        uh_rho,dΩᶜ,dΓ,nΓ,γʷ,Pe,χ,σₐ⁰)
+        ρₕ,dΩᶜ,dΓ,nΓ,γʷ,Pe,χ,σₐ⁰)
     Aᵛ,Bᵛ = _assemble_problem(aᵛ,bᵛ,assemᵛ,Xᵛ,Yᵛ,Aᵛ)
     υₕ,_ = _solve_problem(Aᵛ,Bᵛ,Xᵛ,ps)
 
@@ -672,20 +681,20 @@ for ti in 1:100
 
     op_rho = AffineFEOperator(Arho,Brho,Uᴿ,Vᴿ)
     op_rac = AffineFEOperator(Arac,Brac,Uᴿ,Vᴿ)
-    uh_rac = solve(op_rac)
-    uh_rac_old = uh_rac
-    uh_rho = solve(op_rho) 
-    uh_rho_old = uh_rho
+    Rₕ = solve(op_rac)
+    Rₕ_old = Rₕ
+    ρₕ = solve(op_rho) 
+    ρₕ_old = ρₕ
     #vt[i+1,:] = vcat(lazy_map(υₕ,xΓ)...) 
     #vt[i+1,:] = vt[i+1,perm]
 
     op_rho_i = AffineFEOperator(Arho_i,Brho_i,Uᴿ,Vᴿ)
-    uh_rho_i = solve(op_rho_i) 
+    ρₕ_i = solve(op_rho_i) 
     op_rac_i = AffineFEOperator(Arac_i,Brac_i,Uᴿ,Vᴿ)
-    uh_rac_i = solve(op_rac_i) 
+    Rₕ_i = solve(op_rac_i) 
 
-    ract[i,:] = vcat(lazy_map(uh_rac,xΓ)...)
-    rhot[i,:] = vcat(lazy_map(uh_rho,xΓ)...) 
+    ract[i,:] = vcat(lazy_map(Rₕ,xΓ)...)
+    rhot[i,:] = vcat(lazy_map(ρₕ,xΓ)...) 
     ract[i,:] = ract[i,perm]
     rhot[i,:] = rhot[i,perm]
 
