@@ -1,9 +1,14 @@
-# SurfaceBulkViscousFlows
+# SurfaceViscousFlows
+Forked from SurfaceBulkViscousFlows to work on mechanochemical models that use the original's code as a basis, removing the bulk flow contribution to focus on having more elements on the cell surface.
 
+Original premise of the main repository:
 Repository that holds the Julia software with code demonstrators of the numerical examples in the paper _"Unfitted finite element modelling of surface-bulk viscous flows in animal cells"_. https://arxiv.org/abs/2505.05723
 
 ## List of examples
 
+New examples are being worked on right now.
+
+Original examples from the original repository:
 Referred to the paper sections
 
 - _Section 4.1 Verification examples_
@@ -59,4 +64,4 @@ In order to give credit to the contributors of this software, we simply ask you 
 
 ### Contact
 
-Please, contact [Eric Neiva](mailto:eric.neiva@college-de-france.fr) or [Hervé Turlier](mailto:herve.turlier@college-de-france.fr) if you have any questions.
+Please, contact [Eric Neiva](mailto:eric.neiva@college-de-france.fr),  [Andreu Fernandez Gallen](mailto:andreu.fernandez-gallen@college-de-france.fr) or [Hervé Turlier](mailto:herve.turlier@college-de-france.fr) if you have any questions.
