@@ -1,3 +1,11 @@
+# HOMEWORK
+# 
+# Andreu: 1. Checks calculations by Eric on notes
+#         2. Finishes implementation of the weak form 
+#            of the new membrane equation.
+# Eric: 1. Checks relation between surface gradient and ∂x/∂θ
+#       2. Systematic linearisation with directional derivative
+
 # Weak form of the membrane equation
 #
 # Nonlinear strain rate: 
