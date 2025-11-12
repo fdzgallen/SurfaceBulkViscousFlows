@@ -22,6 +22,8 @@ R = 10       # [um] System size length
 R2 = 10      # [um] System size length
 k=100.0            # [pN /um] elastic constant for the membrane
 σₐ₀ =  20.0        # [pN /um^2] maximum active "pressure"
+Λ=1
+M=1
 
 koff = 1.4  # ezrin koff [1/s] toff=0.7s Fritzsche et al
 kon  = 5.0  # ezrin kon [1/s] ton =0.2s Fritzsche et al
@@ -73,7 +75,7 @@ setsx=2
 #output folder name
 len=trunc(λ,digits=2)
  @info "Characteristic length $len system size $R"
-simulation = "Mechanochemical/T=$T part=$partition ten0=$ten0 db=$dᵇ da=$dᵃ a0=$α₀ b0=$β₀ bopto=$βopto aopto=$αopto a_t=b_t=$b_t rth=$MCAbth/full2 sig_a=$σₐ₀ len=$len lambda=$λᵇ rho0=$rho0 D=$D Drac=Drho=$Drac M0=$M0 deltat=$Δt vCTE=$vCTE tenth=$tenth/"
+simulation = "Mechanochemical NewMemb/T=$T part=$partition ten0=$ten0 db=$dᵇ da=$dᵃ a0=$α₀ b0=$β₀ bopto=$βopto aopto=$αopto a_t=b_t=$b_t rth=$MCAbth/full2 sig_a=$σₐ₀ len=$len lambda=$λᵇ rho0=$rho0 D=$D Drac=Drho=$Drac M0=$M0 deltat=$Δt vCTE=$vCTE tenth=$tenth/"
 #store VTUs in one folder
 pVTU="./VTU/"*simulation
 mkpath(pVTU)
@@ -109,7 +111,7 @@ for i in 2:1:setsx
       run_mechanochemical_axisymmetric(χ,λ⁻²,lη,T,Δt,partition,
         L,simulation,wrac,αopto,βopto,kon,koff,M0,α₀,β₀,k,D,
         σₐ₀,λᵇ,Drac,Drho,rac0,rho0,ten0,a_t,b_t,α,β,dᵃ,dᵇ,
-        sig0,tenth,λʳᴬ,MCAbth,topto,vCTE,R,R2,L2)
+        sig0,tenth,λʳᴬ,MCAbth,topto,vCTE,R,R2,L2,Λ,M)
   end
 end
 

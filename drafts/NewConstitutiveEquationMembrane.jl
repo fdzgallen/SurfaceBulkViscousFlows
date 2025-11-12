@@ -25,7 +25,7 @@
 # OBS 4. Terms like x*x*w can be linearised as
 #        x_old*x*w or x_old^2*w. Eric will check
 #        how to rigorously linearise these terms.
-aᴹ(M,R,x_old,x,w) = 
+aᴹ(M,R,x_old,x,w,θ) = 
   ∫( ( 2*M * ( x*w/2 + 
                R^2 * ( ∇ᵈ(x,nΓ)⋅∇ᵈ(w,nΓ) ) + 
                (cot∘(θ)^2) * x*w ) ) * sin∘(θ) )dΓ +
@@ -33,24 +33,27 @@ aᴹ(M,R,x_old,x,w) =
     ( x_old * x + R^2 * ( ∇ᵈ(x_old,nΓ)⋅∇ᵈ(x,nΓ) ) ) * ( R * ∇ᵈ(w,nΓ) ) + 
     ( cot∘(θ)^3 * x_old ) * x * w ) ) * sin∘(θ) )dΓ
 #
-# TERM 2. ∫( L⋅(tr(εᴾ(u))Id):ε(v) )dΓ = ∫( L⋅tr(ε(u)):ε(v) + 
+# TERM 2. ∫( L⋅(tr(εᴾ(u))Id):ε(v) )dΓ = ∫( L⋅tr(ε(u)):ε(v) +  
 #                                          L⋅tr(εᴺ(u)):ε(v) )dΓ
-#
-
 # Homework: Implement TERM 2
-
+aᴸ(L,R,x_old,x,w,θ) = 
+  ∫( L*(R^2*(∇ᵈ(x,nΓ)⋅∇ᵈ(w,nΓ)) + cot∘(θ)*x*∇ᵈ(w,nΓ) + cot∘(θ)*v*∇ᵈ(x,nΓ) + 
+               (cot∘(θ)^2) * x*w  ) * sin∘(θ) )dΓ +
+  ∫( 0.5/R*L*( ( (1+(cot∘(θ))^2)*x_old*x + R*∇ᵈ(x,nΓ)*R*∇ᵈ(x_old,nΓ) )*( R*∇ᵈ(w,nΓ) 
+      + cot∘(θ)*v ) ) * sin∘(θ) )dΓ
+#cosecant(θ) = 1.0 / sin(θ)
 #
 # TERM 3. ∫( div⋅(S⋅ID) )dΓ = 0 because S real constant
 # However, add basal stress S⋅ID when reporting stresses
 #
 
 # New membrane equation
-a(L,M,R,x_old,x,w) = aᴸ(L,R,x_old,x,w) + aᴹ(M,R,x_old,x,w)
+a(L,M,R,x_old,x,w,θ) = aᴸ(L,R,x_old,x,w,θ) + aᴹ(M,R,x_old,x,w,θ)
 
 # Preserve mass term for Backward Euler time integration
 m(MCA_b,Δt,x,w) = ∫( ( (χ*MCA_b) * (x*w) / Δt )*y )dΓ
 
-A(x,w) = m(uh_MCAb,Δt,x,w) + a(L,M,R,x_old,x,w) + s₀x(x,w)
+A(x,w) = m(uh_MCAb,Δt,x,w) + a(L,M,R,x_old,x,w,θ) + s₀x(x,w)
 B(w) = m(uh_MCAb,Δt,uh_x,w) + bₓ(uh_MCAb,uh_v,w) 
 op_x = AffineFEOperator(A,B,X,WD0)
 uh_x = solve(op_x)
