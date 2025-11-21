@@ -15,7 +15,7 @@ ls = AlgoimCallLevelSetFunction(
   x -> VectorValue( 2.0 * x[1], 2.0 * x[2] ) )
 
 Pe = 30.0
-τᵈkₒ = 0.0010
+τᵈkₒ = 0.1
 n  = 30
 Δt = 0.0002
 T  = 0.20
@@ -27,19 +27,19 @@ dᵃ = 200.0  #deactivation
 Drac = 0.00005 #diffusion rate
 αopto = 5 # opto input for Rac 
 wrac = π/2.5
-χ₀ = 0.1
-χ  = 1.0
+χ  = 100.0
+χ₀ = -3.0 
 
 #Rho Coefficients
 dᵇ = 200.0 #deactivation
 β₀ = 3.00 #basal activation 
 Drho = 0.00005 #diffusion rate 
 βopto = 0 # opto input for Rho 
-σₐ⁰ = 0.01
+σₐ⁰ = 0.5
 
 De=0.00000001
 
-name="SurfaceViscousFlows/turnover/rho-rac 4 sig_a=$σₐ⁰ T=$T dt=$Δt alpha=$α₀ beta=$β₀ da=$dᵃ db= $dᵇ Drac=Drho=$Drac/tk=$τᵈkₒ x0=$χ₀ x=$χ sigmarho=1 sigmaR=1 sa=1/"
+name="SurfaceViscousFlows/turnover/rho-rac 5 better friction T=$T dt=$Δt alpha=$α₀ beta=$β₀ da=$dᵃ db= $dᵇ Drac=Drho=$Drac/sig_a=$σₐ⁰ tk=$τᵈkₒ  x0=$χ₀ x=$χ sigmarho=1 sigmaR=1 sa=1/"
 mkpath(name)
 
 GridapPETSc.with() do

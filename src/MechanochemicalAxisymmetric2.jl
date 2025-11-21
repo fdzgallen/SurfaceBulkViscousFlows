@@ -25,27 +25,6 @@ function threshold2(x,x₀,xth)
   return  (0.5 * (tanh.(x/x₀ .- xth/x₀).+1))
 end
 
-function sinθ(x)
-  return x[2]/norm(x)
-end
-
-function cotθ(x)
-  return  x[1]/x[2]  #  cosθ(x)/sinθ(x)
-end
-
-function cotθ2(x)
-  return  cotθ(x)*cotθ(x)  #  cosθ(x)/sinθ(x)
-end
-
-function cotθ3(x)
-  return  cotθ(x)*cotθ(x)*cotθ(x) #  cosθ(x)/sinθ(x)
-end
-
-function cscθ2(x)
-  return  1 + cotθ2(x) 
-end
-
-
 function MCA_bound_unbound_weak_forms(Δt,kon,koff,λᵇ,λ,R2,D,nΓ,dΓ)
     # Now for MAC bound
   # mass term for the temporal evolution MCA_b
@@ -209,13 +188,9 @@ function run_mechanochemical_axisymmetric(χ,λ⁻²,η,T,Δt,part,
   sum_uh_MCAb = ∑(∫(uh_MCAb)dΓ)
   Minitial = sum_uh_MCAu + sum_uh_MCAb
 
-  fθ(x) =  atan(x[2],-x[1])
-  θ = interpolate_everywhere(fθ,Rho)  
-  # print(get_cell_dof_values(θ))
-  # print("\n")
-  # print(get_cell_dof_values(uh_MCAu)) 
-  # print("\n")
-
+  fθ(x) = arclength(x)/R2
+  θ = interpolate_everywhere(fθ,Rho) #0.62
+  
   print("Start1 sum(MCA_b) "*string(sum_uh_MCAb)*", sum(MCA_u) "*string(sum_uh_MCAu)*", and sum(MCA_b+MCA_u) "*string(Minitial)*"\n")
   
   # Extract quadrature points and arc length array at every cell
@@ -263,25 +238,30 @@ function run_mechanochemical_axisymmetric(χ,λ⁻²,η,T,Δt,part,
   # OBS 4. Terms like x*x*w can be linearised as
   #        x_old*x*w or x_old^2*w. Eric will check
   #        how to rigorously linearise these terms.
-  aᴹ(M,R,x_old,x,w) = 
+  aᴹ(M,R,x_old,x,w,θ) = 
     ∫( ( 2*M * ( x*w/2 + 
-                R*R * ( ∇ᵈ(x,nΓ)⋅∇ᵈ(w,nΓ) ) + 
-                (cotθ2) * (x*w) ) ) * sinθ )dΓ +
+                R^2 * ( ∇ᵈ(x,nΓ)⋅∇ᵈ(w,nΓ) ) + 
+                (cot∘(θ)^2) * x*w ) ) * sin∘(θ) )dΓ +
     ∫( ( M/R * ( 
-      ( x_old * x + R*R * ( ∇ᵈ(x_old,nΓ)⋅∇ᵈ(x,nΓ) ) ) * ( R * ∇ᵈ(w,nΓ)⋅(TensorValue(0.0,-1.0,1.0,0.0)⋅nΓ) ) + 
-      ( cotθ3 * x_old ) * (x * w) ) ) * sinθ )dΓ
+      ( x_old * x + R^2 * ( ∇ᵈ(x_old,nΓ)⋅∇ᵈ(x,nΓ) ) ) * ( R * ∇ᵈ(w,nΓ) ) + 
+      ( cot∘(θ)^3 * x_old ) * x * w ) ) * sin∘(θ) )dΓ
   #
   # TERM 2. ∫( L⋅(tr(εᴾ(u))Id):ε(v) )dΓ = ∫( L⋅tr(ε(u)):ε(v) +  
   #                                          L⋅tr(εᴺ(u)):ε(v) )dΓ
-  # Homework: Implement TERM 2    
-  aᴸ(L,R,x_old,x,w) = 
-    ∫( L*(R*R*(∇ᵈ(x,nΓ)⋅∇ᵈ(w,nΓ)) + (cotθ*(x*∇ᵈ(w,nΓ)) + cotθ*(w*∇ᵈ(x,nΓ)))⋅(TensorValue(0.0,-1.0,1.0,0.0)⋅nΓ) + 
-                (cotθ2) * (x*w)  ) * sinθ )dΓ +
-    ∫( 0.5/R*L*( ( (cscθ2)*x_old*x + R*R*∇ᵈ(x,nΓ)⋅∇ᵈ(x_old,nΓ) )*
-    ( R*∇ᵈ(w,nΓ)⋅(TensorValue(0.0,-1.0,1.0,0.0)⋅nΓ) + cotθ*w ) ) * sinθ )dΓ
+  # Homework: Implement TERM 2
+  aᴸ(L,R,x_old,x,w,θ) = 
+    ∫( L*(R^2*(∇ᵈ(x,nΓ)⋅∇ᵈ(w,nΓ)) + cot∘(θ)*x*∇ᵈ(w,nΓ) + cot∘(θ)*v*∇ᵈ(x,nΓ) + 
+                (cot∘(θ)^2) * x*w  ) * sin∘(θ) )dΓ +
+    ∫( 0.5/R*L*( ( (1+(cot∘(θ))^2)*x_old*x + R*∇ᵈ(x,nΓ)*R*∇ᵈ(x_old,nΓ) )*( R*∇ᵈ(w,nΓ) 
+        + cot∘(θ)*v ) ) * sin∘(θ) )dΓ
+  #cosecant(θ) = 1.0 / sin(θ)
+  #
+  # TERM 3. ∫( div⋅(S⋅ID) )dΓ = 0 because S real constant
+  # However, add basal stress S⋅ID when reporting stresses
+  #
 
   # New membrane equation
-  a(L,M,R,x_old,x,w) = aᴹ(M,R,x_old,x,w) + aᴸ(L,R,x_old,x,w)
+  a(L,M,R,x_old,x,w,θ) = aᴸ(L,R,x_old,x,w,θ) + aᴹ(M,R,x_old,x,w,θ)
 
   # Preserve mass term for Backward Euler time integration
   m(MCA_b,Δt,x,w) = ∫( ( (χ*MCA_b) * (x*w) / Δt )*y )dΓ
@@ -292,7 +272,8 @@ function run_mechanochemical_axisymmetric(χ,λ⁻²,η,T,Δt,part,
 
 
   #Now for v
-  aᵥ(MCA_b,v,w) =  ∫( ( η * (∇ᵈ(v,nΓ)⋅∇ᵈ(w,nΓ)) )*y )dΓ + ∫( ( (χ*MCA_b) * (v*w) )*y )dΓ
+  aᵥ(MCA_b,v,w) =  ∫( ( η * (
+    (v,nΓ)⋅∇ᵈ(w,nΓ)) )*y )dΓ + ∫( ( (χ*MCA_b) * (v*w) )*y )dΓ
   bᵥ(w,uh_MCAb,uh_x_old,uh_rho) = m(uh_MCAb,Δt,uh_x,w) - m(uh_MCAb,Δt,uh_x_old,w) + 
     ∫( ( σₐ₀*(w*(∇ᵈ(uh_rho,nΓ)⋅(TensorValue(0.0,-1.0,1.0,0.0)⋅nΓ) )) )*y )dΓ # ∫(( gradrho*w )*y )dΓ no feedback is ∫( w*∇σₐ )dΓ
   Aᵥ(v,w) = aᵥ(uh_MCAb,v,w) + s₀v(v,w)
@@ -301,8 +282,6 @@ function run_mechanochemical_axisymmetric(χ,λ⁻²,η,T,Δt,part,
   op_v= AffineFEOperator(Aᵥ,Bᵥ,V,WD0)
 
   #SOLVING X AT t=0
-  aₓ(MCA_b,x,w) = ∫( ( (χ*MCA_b) * (x*w) / Δt )*y )dΓ + ∫( ( k * (∇ᵈ(x,nΓ)⋅∇ᵈ(w,nΓ)) )*y )dΓ  
-  bₓ(MCA_b,v,w) = ∫( ( χ*( MCA_b*v)*w )*y )dΓ
   aₓ_0(x,w) = aₓ(0,x,w) 
   b_0(w) =  bₓ(0,0,w)
   op_x = AffineFEOperator(aₓ_0,b_0,X,WD0)
@@ -340,8 +319,7 @@ function run_mechanochemical_axisymmetric(χ,λ⁻²,η,T,Δt,part,
   xt[1,:] = xt[1,perm]
   plotθ = vcat(lazy_map(θ,xΓ)...)
   plotθ = plotθ[perm]
-  plotting("θ",plotθ,pPNG,"theta")
-  #print(get_cell_dof_values(θ))
+  plotting("theta",plotθ,pPNG,"0")
 
 # Computing tension
   mten(u,v) = ∫( (u*v)*y )dΓ
@@ -450,10 +428,10 @@ function run_mechanochemical_axisymmetric(χ,λ⁻²,η,T,Δt,part,
     rac1=racaux[end] 
     ten1=tenaux[end]
     vCTErac = vCTE*threshold2(rac1,rac0,1.3*racaux[1])#velocity polimerization
-    vₗ = -vCTErac # 0.5
+    #vₗ = 0.5
     #we introduce a slight relaxation for the membrane, decreases 2% x at the Boundary condition only
     dummyx0=dummyx0*0.9+Δt*vₗ
-    xₗ = dummyx0
+    #xₗ = dummyx0
     X = TrialFESpace(WD0,p->diri_x(p,x₀,xₗ))
 
     sum_uh_a = ∑(∫(uh_rac)dΓ)
@@ -472,7 +450,7 @@ function run_mechanochemical_axisymmetric(χ,λ⁻²,η,T,Δt,part,
     rhot[i+1,:] = rhot[i+1,perm]
 
     # Updating v to solve MCAb and x
-    A(x,w) = m(uh_MCAb,Δt,x,w) + a(Λ,M,R2,uh_x,x,w) + s₀x(x,w)
+    A(x,w) = m(uh_MCAb,Δt,x,w) + a(Λ,M,R2,uh_x,x,w,θ) + s₀x(x,w)
     B(w) = m(uh_MCAb,Δt,uh_x,w) + bₓ(uh_MCAb,uh_v,w)  
     op_x = AffineFEOperator(A,B,X,WD0)
     uh_x = solve(op_x)
@@ -500,7 +478,7 @@ function run_mechanochemical_axisymmetric(χ,λ⁻²,η,T,Δt,part,
       uh_rac = solve(op_rac)
       uh_rac_old = uh_rac
       
-      # b_sum = sum(paa)
+      # b_sum = sum(paa) 
       #Arho(rho,w) = a_rho(rho,w,ten,uh_rac,β₀v)
       #Brho(w) = b_rho(w,ten,uh_rac,β₀v,uh_rho_old)
       op_rho = AffineFEOperator(Arho,Brho,Rho,Q0)

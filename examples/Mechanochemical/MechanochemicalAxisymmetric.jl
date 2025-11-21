@@ -22,14 +22,15 @@ R = 10       # [um] System size length
 R2 = 10      # [um] System size length
 k=100.0            # [pN /um] elastic constant for the membrane
 σₐ₀ =  20.0        # [pN /um^2] maximum active "pressure"
-Λ=1
-M=1
+ξ=1.0
+Λ = sqrt(3)*0.25*k/ξ
+M = sqrt(3)*0.25*k/ξ
 
 koff = 1.4  # ezrin koff [1/s] toff=0.7s Fritzsche et al
 kon  = 5.0  # ezrin kon [1/s] ton =0.2s Fritzsche et al
 D = 0.3   # diffusion of the membrane [um^2/s] 0.003  Fritzsche et al
 M0 = 0.1 #total amount of ezrin
-const wrac=R2*π/2.5 #Opto signal use this for the Gaussian distribution width
+wrac=R2*π/2.5 #Opto signal use this for the Gaussian distribution width
 #in case one wants nonlinear deactication if the system would be unstable
 λᵇ = 0.001   # for bound ezrin 
 λʳᴬ= 0   #for Rho
@@ -41,7 +42,7 @@ Pe⁻¹ = D*η/(σₐ₀*R^2) #D*η/(σₐ₀*L^2) 0.00075 for σₐ₀=100
 λ = sqrt( η*R*π /(χ*R*R*π*π*M0) ) #\bar λ in the suppl material. Adimensional lenthscale
 
 rac0=0.01# ADIMENSINAlizes rac switch for protrusion, changes the slope of the threshold function
-vCTE= -0#.4 #Scale for the polimerizatio velocity
+vCTE= -0.04 #Scale for the polimerizatio velocity
 ten0=10000.0 #denominator for protrusion dependence on tension
 tenth=2.0 #threshold for tension to activate rho
 sig0 = 2.00  #adimensionalizes the tension term for rho
@@ -75,7 +76,8 @@ setsx=2
 #output folder name
 len=trunc(λ,digits=2)
  @info "Characteristic length $len system size $R"
-simulation = "Mechanochemical NewMemb/T=$T part=$partition ten0=$ten0 db=$dᵇ da=$dᵃ a0=$α₀ b0=$β₀ bopto=$βopto aopto=$αopto a_t=b_t=$b_t rth=$MCAbth/full2 sig_a=$σₐ₀ len=$len lambda=$λᵇ rho0=$rho0 D=$D Drac=Drho=$Drac M0=$M0 deltat=$Δt vCTE=$vCTE tenth=$tenth/"
+#simulation = "Mechanochemical/T=$T part=$partition ten0=$ten0 db=$dᵇ da=$dᵃ a0=$α₀ b0=$β₀ bopto=$βopto aopto=$αopto a_t=b_t=$b_t rth=$MCAbth/full2 sig_a=$σₐ₀ len=$len lambda=$λᵇ rho0=$rho0 D=$D Drac=Drho=$Drac M0=$M0 deltat=$Δt vCTE=$vCTE tenth=$tenth/"
+simulation = "Mechanochemical NewMemb/T=$T part=$partition ten0=$ten0 db=$dᵇ da=$dᵃ a0=$α₀ b0=$β₀ bopto=$βopto aopto=$αopto a_t=b_t=$b_t rth=$MCAbth/L=$Λ M=$M sig_a=$σₐ₀ len=$len lambda=$λᵇ rho0=$rho0 D=$D Drac=Drho=$Drac M0=$M0 deltat=$Δt vCTE=$vCTE tenth=$tenth/"
 #store VTUs in one folder
 pVTU="./VTU/"*simulation
 mkpath(pVTU)
@@ -112,6 +114,10 @@ for i in 2:1:setsx
         L,simulation,wrac,αopto,βopto,kon,koff,M0,α₀,β₀,k,D,
         σₐ₀,λᵇ,Drac,Drho,rac0,rho0,ten0,a_t,b_t,α,β,dᵃ,dᵇ,
         sig0,tenth,λʳᴬ,MCAbth,topto,vCTE,R,R2,L2,Λ,M)
+      # run_mechanochemical_axisymmetric_old(χ,λ⁻²,lη,T,Δt,partition,
+      #   L,simulation,wrac,αopto,βopto,kon,koff,M0,α₀,β₀,k,D,
+      #   σₐ₀,λᵇ,Drac,Drho,rac0,rho0,ten0,a_t,b_t,α,β,dᵃ,dᵇ,
+      #   sig0,tenth,λʳᴬ,MCAbth,topto,vCTE,R,R2,L2)
   end
 end
 

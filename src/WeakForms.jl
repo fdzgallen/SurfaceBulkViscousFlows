@@ -21,16 +21,18 @@ function rac_rho_weak_forms_conserved(Δt,dᵃ,dᵇ,Drac,Drho,nΓ,dΓ)
   #DEFINING the equations for Rac and Rho
   #TODO add y's, convert into axisymmetric
   m2(Δt,A,w) = ∫( ( (A*w)/Δt )*y )dΓ
-  a_rac(rac,w) = (1/dᵃ)*m2(Δt,rac,w)  + ∫( ( Drac * (∇ᵈ(rac,nΓ)⋅∇ᵈ(w,nΓ)) )*y )dΓ + ∫(w*rac)dΓ  
+  advection(rac,w,v) =  ∫( (w*( ∇ᵈ(rac,nΓ)⋅v + rac*divᶜ(v,nΓ))  )*y )dΓ
+
+  a_rac(rac,w,v) = (1/dᵃ)*m2(Δt,rac,w)  + ∫( ( Drac * (∇ᵈ(rac,nΓ)⋅∇ᵈ(w,nΓ)) )*y )dΓ + ∫((w*rac)*y)dΓ# + advection(rac,w,v)
   b_rac(w,rho,α₀v,rac_i,rac_old) =  (1/dᵃ)*m2(Δt,rac_old,w) + ∫( w*(rac_i)*(α₀v/(1+rho*rho))*y )dΓ  
   a_rac_i(rac_i,w) = ∫(((w*(rac_i))*y))dΓ  
-  b_rac_i(w,a_sum) = ∫((w*(a_t - a_sum))*y)dΓ
+  b_rac_i(w,a_t,a_sum) = ∫((w*(a_t - a_sum))*y)dΓ
 
-  a_rho(rho,w) = (1/dᵇ)*m2(Δt,rho,w) + ∫( ( Drho * (∇ᵈ(rho,nΓ)⋅∇ᵈ(w,nΓ)) )*y )dΓ  + 
-  ∫(w*rho)dΓ  #  +∫(λʳᴬ*((rho*rho*rho)*w))dΓ  
-  b_rho(w,rac,rho_i) =  (1/dᵇ)*m2(Δt,uh_rho_old,w) + ∫( (w*(rho_i)*(β₀v/(1+rac*rac)))*y)dΓ  
+  a_rho(rho,w,v) = (1/dᵇ)*m2(Δt,rho,w)  + ∫( ( Drho * (∇ᵈ(rho,nΓ)⋅∇ᵈ(w,nΓ)) )*y )dΓ  + advection(rho,w,v) + 
+  ∫((w*rho)*y)dΓ  #  +∫(λʳᴬ*((rho*rho*rho)*w))dΓ  
+  b_rho(w,rac,β₀v,rho_i,rho_old) =  (1/dᵇ)*m2(Δt,rho_old,w) + ∫( (w*(rho_i)*(β₀v/(1+rac*rac)))*y)dΓ   
   a_rho_i(rho_i,w) = ∫((w*(rho_i))*y)dΓ 
-  b_rho_i(w,b_sum) = ∫((w*(b_t - b_sum))*y)dΓ
+  b_rho_i(w,b_t,b_sum) = ∫((w*(b_t - b_sum))*y)dΓ
 
   a_rac, b_rac, a_rho, b_rho, a_rac_i, b_rac_i, a_rho_i, b_rho_i
 end

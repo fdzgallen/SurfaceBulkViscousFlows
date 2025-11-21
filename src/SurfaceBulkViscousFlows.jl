@@ -36,6 +36,7 @@ include("SurfaceViscousFlowsAxisymmetric.jl")
 include("SurfaceViscousFlowsAxisymmetric_turnover.jl")
 
 include("MechanochemicalAxisymmetric.jl")
+include("MechanochemicalAxisymmetric_old.jl")
 # include("SingletActinTurnover.jl")
 
 export unit_density
@@ -50,9 +51,12 @@ export surface_bulk_viscous_flows_axisymmetric
 export surface_bulk_viscous_flows_3D
 
 export surface_viscous_flows_axisymmetric
+export surface_viscous_flows_axisymmetric_conserved
 export surface_viscous_flows_axisymmetric_turnover
 
 export run_mechanochemical_axisymmetric
 export run_singlet_axisymmetric
+
+export run_mechanochemical_axisymmetric_old
 
 end # module SurfaceBulkViscousFlows
