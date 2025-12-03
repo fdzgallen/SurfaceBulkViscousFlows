@@ -52,13 +52,12 @@ function MCA_bound_unbound_weak_forms(Δt,kon,koff,λᵇ,λ,R2,D,nΓ,dΓ)
   τ = TensorValue(0.0,-1.0, 1.0, 0.0) ⋅ nΓ    # vector tangente
 
   mMCA(Δt,MCA_b,w) = ∫( ( (MCA_b*w)/Δt )*y )dΓ 
-  aMCAb(MCA_b,v,w) = ∫( ( (MCA_b*w)/Δt )*y )dΓ    + ∫( ( 0.0001 * (∇ᵈ(MCA_b,nΓ)⋅∇ᵈ(w,nΓ)) )*y )dΓ + 
+  aMCAb(MCA_b,v,w) = ∫( ( (MCA_b*w)/Δt )*y )dΓ  + ∫( ( 0.0001 * (∇ᵈ(MCA_b,nΓ)⋅∇ᵈ(w,nΓ)) )*y )dΓ + 
     ∫( ( koff * ( MCA_b * w ) )*y )dΓ + 
-    ∫( ( w * ( (v ⋅ τ) * (∇ᵈ(MCA_b,nΓ)⋅τ)))*y )dΓ  + # ∫( ( w * ( v * (∇ᵈ(MCA_b,nΓ)⋅(VectorValue(1.0,1.0))) + #
-    ∫( w * ( MCA_b * ( (τ ⋅ ∇ᵈ(v,nΓ)) ⋅ τ  ) ) * y )dΓ #+ #MCA_b * (∇ᵈ(v,nΓ)⋅(VectorValue(1.0,1.0))) ) )*y )dΓ + #
-   # ∫( ( λᵇ * ( ( MCA_b*MCA_b*MCA_b ) * w ) )*y )dΓ
+    ∫( ( w * ( (v ⋅ τ) * (∇ᵈ(MCA_b,nΓ)⋅τ)))*y )dΓ  +  
+    ∫( w * ( MCA_b * ( (τ ⋅ ∇ᵈ(v,nΓ)) ⋅ τ  ) ) * y )dΓ  
   bMCAb(w,MCA_u,MCAb_old,λ) = ∫( ( kon * ( MCA_u * w ) + (MCAb_old*w)/Δt )*y )dΓ  +
-    ∫( ( λ/(π*R2) * ( kon / (kon+koff) )* w )*y )dΓ # mMCA(Δt,MCAb_old,w)  
+    ∫( ( λ/(π*R2) * ( kon / (kon+koff) )* w )*y )dΓ  
 
   #Now for MCA unbound
   # mass term for the temporal evolution MCA_b0
@@ -91,7 +90,7 @@ end
 
 #function to run a single simulation with a few given parameters
 function run_mechanochemical_axisymmetric_vector( koff,kon,M0,D ,λᵇ,λʳᴬ,rac0,rho0,ten0,vCTE,tenth,sig0,MCAbth,
-            dᵃ,α₀,Drac,αopto,dᵇ,β₀,Drho,βopto,wrac,  sigmaₐ⁰::Float64, sigmaρ⁰::Float64, Λ::Float64,M::Float64, 
+            dᵃ,α₀,Drac,αopto,dᵇ,β₀,Drho,βopto,wrac,  sigmaₐ⁰::Float64, sigmaρ⁰::Float64, Λ::Float64,M::Float64, k::Float64,
             domain::Tuple{Vararg{Float64}},
             ls::AlgoimCallLevelSetFunction,
             Pe::Float64,
@@ -405,17 +404,11 @@ function run_mechanochemical_axisymmetric_vector( koff,kon,M0,D ,λᵇ,λʳᴬ,r
 
   #SOLVE MCA_b AT t=0 vien initial velocity zero
   AMCAb(MCA_b,w) = aMCAb(MCA_b,υₕ,w) + s₀MCA(MCA_b,w)
-  BMCAb(w) = bMCAb(w,uh_MCAu,uh_MCAb_old,λ)
-  op_MCAb= AffineFEOperator(AMCAb,BMCAb,Uᴿ,Vᴿ)
-  uh_MCAb=solve(op_MCAb)
-  uh_MCAb_old=uh_MCAb
+  BMCAb(w) = bMCAb(w,uh_MCAu,uh_MCAb_old,λ) 
 
   #SOLVE MCA_u AT t=0
   AMCAu(MCA_u,w) = aMCAu(MCA_u,xₕ,xₕ_old,w) + s₀MCA(MCA_u,w)
-  BMCAu(w) = bMCAu(w,uh_MCAb,uh_MCAu_old,λ)
-  op_MCAu = AffineFEOperator(AMCAu,BMCAu,Uᴿ,Vᴿ)
-  uh_MCAu = solve(op_MCAu)
-  uh_MCAu_old = uh_MCAu
+  BMCAu(w) = bMCAu(w,uh_MCAb,uh_MCAu_old,λ) 
   
   # Extract quadrature points and arc length array at every cell
   xΓ = dΓ.quad.cell_point.values
@@ -434,7 +427,8 @@ function run_mechanochemical_axisymmetric_vector( koff,kon,M0,D ,λᵇ,λʳᴬ,r
   σₐt = zeros(nΔt,num_qpoints)
   χt = zeros(nΔt,num_qpoints)
   vt = zeros(nΔt,num_qpoints)
-  _vt = vcat(lazy_map(υₕ ⋅ (TensorValue(0.0,-1.0,1.0,0.0)⋅nΓ),xΓ)...) 
+  tent = zeros(nΔt,num_qpoints)
+  _vt = vcat(lazy_map(υₕ ⋅ τ,xΓ)...) 
   vt[1,:] = _vt[perm] 
   MCAbt[1,:] = vcat(lazy_map(uh_MCAb,xΓ)...)[perm]
 
@@ -445,6 +439,18 @@ function run_mechanochemical_axisymmetric_vector( koff,kon,M0,D ,λᵇ,λʳᴬ,r
   end
 
   χR(R) = (χ₀.+χ*uh_MCAb)
+ 
+ # Computing tension
+  mten(u,v) = ∫( (u*v)*y )dΓ
+  mten2(u,v) = ∫(( k*( τ ⋅ ∇ᵈ(u,nΓ) ⋅ τ )*v)*y )dΓ
+  sten(u,v) = ∫( 10*γ₀*((nΓ⋅∇(u))⊙(nΓ⋅∇(v))) )dΩᶜ
+
+  Aten(u,v) = mten(u,v) + sten(u,v)
+  bten(v) = mten2(xₕ,v)
+  op_ten = AffineFEOperator(Aten,bten,Uᴿ,Vᴿ) 
+
+  ten = solve(op_ten)
+  tent[1,:] = vcat(lazy_map(ten,xΓ)...)[perm] 
 
   for ti in 1:100 
     op_rho = AffineFEOperator(Arho,Brho,Uᴿ,Vᴿ)
@@ -481,7 +487,7 @@ function run_mechanochemical_axisymmetric_vector( koff,kon,M0,D ,λᵇ,λʳᴬ,r
     i2 = ∑(∫(uh_MCAu)dΓ)
     λ = conservation(i2,i1,Minitial)
 
-    @info "Time step $i, time $t and time step $Δt"
+    @info "Time step $i, time $(trunc(t, digits=4)) and time step $Δt"
 
     assemᵛ = SparseMatrixAssembler(Tm,Tv,UVᵛ,Yᵛ)
     Aᵛ = nothing
@@ -493,32 +499,15 @@ function run_mechanochemical_axisymmetric_vector( koff,kon,M0,D ,λᵇ,λʳᴬ,r
     υₕtan = to_tangent_vector(υₕ,nΓ) #υₕ⋅(TensorValue(0.0,-1.0,1.0,0.0)⋅nΓ)#⋅(VectorValue(0.0,-1.0,1.0,0.0)⋅nΓ)
 
     msₕ = get_maximum_magnitude_with_dirichlet(υₕ)
- 
-    assemˣ = SparseMatrixAssembler(Tm,Tv,UXᵛ,Yᵛ)
-    # bᵛ(w) = m(uh_MCAb,Δt,xₕ,w) + bₓ(uh_MCAb,υₕ,w)    
-    # aˣ,bˣ = cortical_flow_problem_mechanochemical_axisymmetric(
-    #     ρₕ,uh_MCAb,dΩᶜ,dΓ,nΓ,γʷ,Pe,χ,χ₀,activity,sigmaₐ⁰,  sigmaρ⁰)
+  
     aˣ(x,w) = m(uh_MCAb,Δt,x,w)  + aᴸ(Λ,R2,xₕ_old,x,w) + aᴹ(M,R2,xₕ_old,x,w) + s₀x(x,w) #a(Λ,M,R2,xₕ,x,w) 
     bˣ(w) = m(uh_MCAb,Δt,xₕ,w) + bₓ(uh_MCAb,υₕ,w)    
-    # aˣ(x, w) = begin
-    #     u_vec = x[1]  # Desempaquetamos la incógnita (Trial)
-    #     v_vec = w[1]  # Desempaquetamos el test (Test)
-        
-    #     # Ahora pasamos los vectores puros a tus funciones
-    #     m(uh_MCAb, Δt, u_vec, v_vec) + 
-    #     aᴸ(Λ, R2, xₕ_old, u_vec, v_vec) + 
-    #     aᴹ(M, R2, xₕ_old, u_vec, v_vec) + s₀x(u_vec,v_vec)
-    # end
 
-    # bˣ(w) = begin
-    #     v_vec = w[1] # Desempaquetamos el test
-        
-    #     m(uh_MCAb, Δt, xₕ, v_vec) + 
-    #     bₓ(uh_MCAb, υₕ, v_vec)
-    # end
-    Aˣ = nothing
-    Aˣ,Bˣ = _assemble_problem(aˣ,bˣ,assemˣ,UXʷ,Vʷ,Aˣ)
-    xₕ = _solve_problem(Aˣ,Bˣ,UXʷ,ps)
+    op_x= AffineFEOperator(aˣ,bˣ,UXʷ,Vʷ)
+    xₕ = solve(op_x)
+    xₕtan = to_tangent_vector(xₕ,nΓ)
+    op_ten = AffineFEOperator(Aten,bten,Uᴿ,Vᴿ) 
+    ten = solve(op_ten)
     xₕ_old =  xₕ
 
     i = i + 1
@@ -549,9 +538,9 @@ function run_mechanochemical_axisymmetric_vector( koff,kon,M0,D ,λᵇ,λʳᴬ,r
     MCAbt[i,:] = vcat(lazy_map(uh_MCAb,xΓ)...)[perm]
     σₐt[i,:] =    sigmaₐ⁰ .+ sigmaρ⁰ * rhot[i,:]  
     χt[i,:] =  χ₀ .+ χ*MCAbt[i,:] #χR(ract[i,:]) 
-    _vt = υₕ⋅(TensorValue(0.0,-1.0,1.0,0.0)⋅nΓ)
-    vt[i,:]  = vcat(lazy_map(_vt,xΓ)...) 
-    vt[i,:] = vt[i,perm] 
+    _vt = υₕ⋅τ
+    vt[i,:]  = vcat(lazy_map(_vt,xΓ)...)[perm] 
+    tent[i,:] = vcat(lazy_map(ten,xΓ)...)[perm]
     
     plotting("rac",ract[i,:],pPNG*"Rac_time/","$i")
     plotting("rho",rhot[i,:],pPNG*"Rho_time/","$i") 
