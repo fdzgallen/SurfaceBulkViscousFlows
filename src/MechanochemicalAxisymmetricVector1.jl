@@ -49,12 +49,15 @@ end
 function MCA_bound_unbound_weak_forms(Δt,kon,koff,λᵇ,λ,R2,D,nΓ,dΓ)
     # Now for MAC bound
   # mass term for the temporal evolution MCA_b
-  mMCA(Δt,MCA_b,w) = ∫( ( (MCA_b*w)/Δt )*y )dΓ
+  T = TensorValue(0.0,-1.0, 1.0, 0.0)   # matriz 2x2 antisimet.
+  τ = T ⋅ nΓ                           # vector tangente
+
+  mMCA(Δt,MCA_b,w) = ∫( ( (MCA_b*w)/Δt )*y )dΓ 
   aMCAb(MCA_b,v,w) = ∫( ( (MCA_b*w)/Δt )*y )dΓ    + ∫( ( 0.01 * (∇ᵈ(MCA_b,nΓ)⋅∇ᵈ(w,nΓ)) )*y )dΓ + 
-    ∫( ( koff * ( MCA_b * w ) )*y )dΓ +
-    ∫( ( w * ( v * (∇ᵈ(MCA_b,nΓ)⋅(TensorValue(0.0,-1.0,1.0,0.0)⋅nΓ)) + # ∫( ( w * ( v * (∇ᵈ(MCA_b,nΓ)⋅(VectorValue(1.0,1.0))) + #
-    MCA_b * (∇ᵈ(v,nΓ)⋅(TensorValue(0.0,-1.0,1.0,0.0)⋅nΓ)) ) )*y )dΓ + #MCA_b * (∇ᵈ(v,nΓ)⋅(VectorValue(1.0,1.0))) ) )*y )dΓ + #
-    ∫( ( λᵇ * ( ( MCA_b*MCA_b*MCA_b ) * w ) )*y )dΓ
+    ∫( ( koff * ( MCA_b * w ) )*y )dΓ + 
+    ∫( ( w * ( (v⋅τ) * (∇ᵈ(MCA_b,nΓ)⋅τ)))*y )dΓ  + # ∫( ( w * ( v * (∇ᵈ(MCA_b,nΓ)⋅(VectorValue(1.0,1.0))) + #
+    ∫( w * ( MCA_b * ( (∇ᵈ(v,nΓ)) ⋅ τ ⋅ τ) ) * y )dΓ #+ #MCA_b * (∇ᵈ(v,nΓ)⋅(VectorValue(1.0,1.0))) ) )*y )dΓ + #
+   # ∫( ( λᵇ * ( ( MCA_b*MCA_b*MCA_b ) * w ) )*y )dΓ
   bMCAb(w,MCA_u,MCAb_old,λ) = ∫( ( kon * ( MCA_u * w ) + (MCAb_old*w)/Δt )*y )dΓ  +
     ∫( ( λ/(π*R2) * ( kon / (kon+koff) )* w )*y )dΓ # mMCA(Δt,MCAb_old,w)  
 
@@ -62,8 +65,8 @@ function MCA_bound_unbound_weak_forms(Δt,kon,koff,λᵇ,λ,R2,D,nΓ,dΓ)
   # mass term for the temporal evolution MCA_b0
   aMCAu(MCA_u,x,x_old,w) = ∫( ( (MCA_u*w)/Δt )*y )dΓ + ∫( ( D * ( ∇ᵈ(MCA_u,nΓ)⋅∇ᵈ(w,nΓ) ) )*y )dΓ + 
     ∫( ( kon * ( MCA_u * w ) )*y )dΓ + 
-    ∫( ( w * ( ( (x-x_old) / Δt ) * (∇ᵈ(MCA_u,nΓ)⋅(TensorValue(0.0,-1.0,1.0,0.0)⋅nΓ)) + 
-    MCA_u * ( (∇ᵈ(x,nΓ)⋅(TensorValue(0.0,-1.0,1.0,0.0)⋅nΓ)) - (∇ᵈ(x_old,nΓ)⋅(TensorValue(0.0,-1.0,1.0,0.0)⋅nΓ)) ) / Δt ) )*y )dΓ  + 
+    ∫( ( w * ( ( (x-x_old)⋅τ / Δt ) * ( ∇ᵈ(MCA_u,nΓ)⋅τ ) + 
+    MCA_u * ( ( ∇ᵈ(x,nΓ)⋅τ ⋅τ ) - ( ∇ᵈ(x_old,nΓ)⋅τ ⋅τ ) ) / Δt ) )*y )dΓ  + 
     ∫( ( λᵇ * ( ( MCA_u*MCA_u*MCA_u ) * w ) )*y )dΓ
   bMCAu(w,MCA_b,MCAu_old,λ) = ∫( ( koff * (MCA_b*w))*y )dΓ + ∫( ( (MCAu_old*w)/Δt )*y )dΓ  + 
     ∫( ( λ/(π*R2) * (koff/(kon+koff))* w )*y )dΓ # mMCA(Δt,MCAu_old,w) 
@@ -88,7 +91,7 @@ function rac_rho_weak_forms(Δt,dᵃ,dᵇ,Drac,Drho,α,β,α₀v,β₀v,rho0,MCA
 end
 
 #function to run a single simulation with a few given parameters
-function run_mechanochemical_axisymmetric(χ,λ⁻²,η,T,Δt,part,
+function run_mechanochemical_axisymmetric_vector(χ,λ⁻²,η,T,Δt,part,
     L,simulation,wrac,αopto,βopto,kon,koff,M0,α₀,β₀,k,D,
     σₐ₀,λᵇ,Drac,Drho,rac0,rho0,ten0,a_t,b_t,α,β,dᵃ,dᵇ,
     sig0,tenth,λʳᴬ,MCAbth,topto,vCTE,R,R2,L2,Λ,M)
@@ -97,6 +100,7 @@ function run_mechanochemical_axisymmetric(χ,λ⁻²,η,T,Δt,part,
   t₀  = 0.0
   t   = t₀  
   nΔt = trunc(Int,T/Δt)
+
 
   # Level set function implicitly describing a unit sphere
   #R = 10.0 # Defined in main now
@@ -130,10 +134,17 @@ function run_mechanochemical_axisymmetric(χ,λ⁻²,η,T,Δt,part,
   x₀ = 0.0
   xₗ = 0.0
   diri_x(p,x₀,xₗ) = p[1] < 0 ? x₀ : xₗ # x₀ on negative x coordinate, xₗ otherwise  
-
   v₀ = 0.0
   vₗ = 0.0
   diri_v(p,v₀,vₗ) = p[1] < 0 ? v₀ : vₗ # v₀ on negative x coordinate, vₗ otherwise  
+
+  #Starting Boundary conditions
+  x₀ = 0.0
+  xₗ = 0.0
+  diri_vecx(p,x₀,xₗ) = p[1] < 0 ? VectorValue(x₀,0) : VectorValue(xₗ,0) # x₀ on negative x coordinate, xₗ otherwise  
+  v₀ = 0.0
+  vₗ = 0.0
+  diri_vecv(p,v₀,vₗ) = p[1] < 0 ?  VectorValue(v₀,0) : VectorValue(vₗ,0)  # v₀ on negative x coordinate, vₗ otherwise  
 
   degree = 3 # Better for algoim quadratures
   # triangulate FE space
@@ -141,13 +152,22 @@ function run_mechanochemical_axisymmetric(χ,λ⁻²,η,T,Δt,part,
   squad = Quadrature(algoim,φ,degree,phase=CUT)
   Ωᶜ,dΓ,_ = TriangulationAndMeasure(Ω,squad) # dΓ  = quadrature rule on sphere, Ωᶜ = cut cells
   dΩᶜ = Measure(Ωᶜ,2*order)                  # dΩᶜ = quadrature rule on cut cells (for stabilisation)
-  nΓ = normal(φ,Ω)
+  nΓ = normal(φ,Ω) 
+  τ = TensorValue(0.0,-1.0, 1.0, 0.0) ⋅ nΓ                           # vector tangente
+
+  # Reference FEs
+  N = num_dims(model)
+  reffeʷ = ReferenceFE(lagrangian,VectorValue{N,Float64},order)
 
   # Creating FE space
   reffe = ReferenceFE(lagrangian,Float64,order)
-  WD0 = TestFESpace(Ωᶜ,reffe;dirichlet_tags=["tag_5"])
-  X = TrialFESpace(WD0,p->diri_x(p,x₀,xₗ))
-  V = TrialFESpace(WD0,p->diri_v(p,v₀,vₗ))
+  #WD0 = TestFESpace(Ωᶜ,reffe;dirichlet_tags=["tag_5"])
+  #X = TrialFESpace(WD0,p->diri_x(p,x₀,xₗ)) # for scalar membrane displacement x
+  #V = TrialFESpace(WD0,p->diri_v(p,v₀,vₗ)) # for scalar cortex velocity v
+  Vʷ = TestFESpace(Ωᶜ,reffeʷ,dirichlet_tags=[5], dirichlet_masks=[(true,false)]) # vector space test FE space
+  UXʷ = TrialFESpace(Vʷ,p->diri_vecx(p,x₀,xₗ)) # vector space trial FE space for membrane displacement
+  UVʷ = TrialFESpace(Vʷ,p->diri_vecv(p,v₀,vₗ)) # vector space trial FE space for cortex velocity
+
 
   #Neumann and defining trial spaces and test space for MCA_b 
   Q0 = TestFESpace(Ωᶜ,reffe)
@@ -156,37 +176,37 @@ function run_mechanochemical_axisymmetric(χ,λ⁻²,η,T,Δt,part,
   Rac =  TrialFESpace(Q0)
   Rho =  TrialFESpace(Q0)
 
-  #Building the vectors used for introducing opto influence as an increase in α and β
-  arclength(x) = R2 * atan(x[2],-x[1]) # Arc length for sphere
-  α₀opto(x) = α₀
-  β₀opto(x) = β₀
+    #Building the vectors used for introducing opto influence as an increase in α and β
+    arclength(x) = R2 * atan(x[2],-x[1]) # Arc length for sphere
+    α₀opto(x) = α₀
+    β₀opto(x) = β₀
 
-  α₀opto2(x) = α₀ + αopto * exp( -0.5 * ( arclength(x)-π*R2 )^2 / ((wrac)^2) )
-  β₀opto2(x) = β₀ + βopto * exp( -0.5 * ( arclength(x))^2       / ((wrac)^2) )
-  
-  γ₀ = 0.1  / h # TODO: Eric reviews the scaling with h
-  γ₀v = 0.1 * η / h # TODO: Eric reviews the scaling with h
-  γ₀x = 0.1 * k / h # TODO: Eric reviews the scaling with h
-  γ₀M =  0.1  / h 
-  γ₀R =  0.1  / h 
-  m₀opto(u,v) = ∫( u*v )dΓ
-  s₀opto(u,v) = ∫( γ₀*((nΓ⋅∇(u))⊙(nΓ⋅∇(v))) )dΩᶜ
-  s₀v(u,v) = ∫( γ₀v*((nΓ⋅∇(u))⊙(nΓ⋅∇(v))) )dΩᶜ
-  s₀x(u,v) = ∫( γ₀x*((nΓ⋅∇(u))⊙(nΓ⋅∇(v))) )dΩᶜ
-  s₀MCA(u,v) = ∫( γ₀M*((nΓ⋅∇(u))⊙(nΓ⋅∇(v))) )dΩᶜ
-  s₀R(u,v) = ∫( γ₀R*((nΓ⋅∇(u))⊙(nΓ⋅∇(v))) )dΩᶜ
+    α₀opto2(x) = α₀ + αopto * exp( -0.5 * ( arclength(x)-π*R2 )^2 / ((wrac)^2) )
+    β₀opto2(x) = β₀ + βopto * exp( -0.5 * ( arclength(x))^2       / ((wrac)^2) )
+    
+    γ₀ = 0.1  / h # TODO: Eric reviews the scaling with h
+    γ₀v = 0.1 * η / h # TODO: Eric reviews the scaling with h
+    γ₀x = 0.1 * k / h # TODO: Eric reviews the scaling with h
+    γ₀M =  0.1  / h 
+    γ₀R =  0.1  / h 
+    m₀opto(u,v) = ∫( u*v )dΓ
+    s₀opto(u,v) = ∫( γ₀*((nΓ⋅∇(u))⊙(nΓ⋅∇(v))) )dΩᶜ
+    s₀v(u,v) = ∫( γ₀v*((nΓ⋅∇(u))⊙(nΓ⋅∇(v))) )dΩᶜ
+    s₀x(u,v) = ∫( γ₀x*((nΓ⋅∇(u))⊙(nΓ⋅∇(v))) )dΩᶜ
+    s₀MCA(u,v) = ∫( γ₀M*((nΓ⋅∇(u))⊙(nΓ⋅∇(v))) )dΩᶜ
+    s₀R(u,v) = ∫( γ₀R*((nΓ⋅∇(u))⊙(nΓ⋅∇(v))) )dΩᶜ
 
-  A₀opto(u,v) = m₀opto(u,v) + s₀opto(u,v)
-  bα₀opto(v) = m₀opto(α₀opto,v)
-  bβ₀opto(v) = m₀opto(β₀opto,v)
-  bα₀opto2(v) = m₀opto(α₀opto2,v)
-  bβ₀opto2(v) = m₀opto(β₀opto2,v)
+    A₀opto(u,v) = m₀opto(u,v) + s₀opto(u,v)
+    bα₀opto(v) = m₀opto(α₀opto,v)
+    bβ₀opto(v) = m₀opto(β₀opto,v)
+    bα₀opto2(v) = m₀opto(α₀opto2,v)
+    bβ₀opto2(v) = m₀opto(β₀opto2,v)
 
-  op_α₀ = AffineFEOperator(A₀opto,bα₀opto,Rac,Q0)
-  op_β₀ = AffineFEOperator(A₀opto,bβ₀opto,Rho,Q0)
+    op_α₀ = AffineFEOperator(A₀opto,bα₀opto,Rac,Q0)
+    op_β₀ = AffineFEOperator(A₀opto,bβ₀opto,Rho,Q0)
 
-  α₀v = solve(op_α₀)
-  β₀v = solve(op_β₀)
+    α₀v = solve(op_α₀)
+    β₀v = solve(op_β₀)
 
   writevtk(Ωᶜ,"tmp",cellfields=["a"=>α₀v,"b"=>β₀v,"f"=>φ.φ])
 
@@ -195,9 +215,12 @@ function run_mechanochemical_axisymmetric(χ,λ⁻²,η,T,Δt,part,
   uh_MCAb_old = uh_MCAb
   uh_MCAu = interpolate_everywhere(koff*M0/(π*R2)/(koff+kon),RHO0)
   uh_MCAu_old = uh_MCAu
-  uh_x = zero(X)
-  uh_x_old = uh_x
-  uh_v = zero(V)
+  _uh_x(x) = VectorValue(0.0,0.0)
+  uh_x  = interpolate_everywhere(_uh_x,UXʷ)
+  # Compute initial condition for surface velocity
+  _uh_v(x) = VectorValue(0.0,0.0)
+  uh_v  = interpolate_everywhere(_uh_v,UVʷ) 
+  uh_x_old = uh_x 
   f1(x) = 0.01*arclength(x)
   f2(x) = α₀+0.5*exp(-arclength(x)^2/wrac^2)
   f3(x) = -0.1*(arclength(x)-R*π/2)/wrac^2*0.5*exp(-(arclength(x)-R*π/2)^2/wrac^2)
@@ -264,48 +287,50 @@ function run_mechanochemical_axisymmetric(χ,λ⁻²,η,T,Δt,part,
   #        x_old*x*w or x_old^2*w. Eric will check
   #        how to rigorously linearise these terms.
   aᴹ(M,R,x_old,x,w) = 
-    ∫( ( 2*M * ( x*w/2 + 
-                R*R * ( ∇ᵈ(x,nΓ)⋅∇ᵈ(w,nΓ) ) + 
-                (cotθ2) * (x*w) ) ) * sinθ )dΓ +
+    ∫( ( 2*M * ( x⋅w/2 + 
+                R*R * ( ∇ᵈ(x,nΓ) ⊙ ∇ᵈ(w,nΓ) ) + 
+                (cotθ2) * (x⋅w) ) ) * sinθ )dΓ +
     ∫( ( M/R * ( 
-      ( x_old * x + R*R * ( ∇ᵈ(x_old,nΓ)⋅∇ᵈ(x,nΓ) ) ) * ( R * ∇ᵈ(w,nΓ)⋅(TensorValue(0.0,-1.0,1.0,0.0)⋅nΓ) ) + 
-      ( cotθ3 * x_old ) * (x * w) ) ) * sinθ )dΓ
+      ( x_old ⋅ x + R*R * ( ∇ᵈ(x_old,nΓ)⊙∇ᵈ(x,nΓ) ) ) * ( R * ∇ᵈ(w,nΓ)⋅τ ) + 
+      ( cotθ3 * x_old ) * (x ⋅ w) ) )⋅τ * sinθ )dΓ
+
+ 
   #
   # TERM 2. ∫( L⋅(tr(εᴾ(u))Id):ε(v) )dΓ = ∫( L⋅tr(ε(u)):ε(v) +  
   #                                          L⋅tr(εᴺ(u)):ε(v) )dΓ
   # Homework: Implement TERM 2    
   aᴸ(L,R,x_old,x,w) = 
-    ∫( L*(R*R*(∇ᵈ(x,nΓ)⋅∇ᵈ(w,nΓ)) + (cotθ*(x*∇ᵈ(w,nΓ)) + cotθ*(w*∇ᵈ(x,nΓ)))⋅(TensorValue(0.0,-1.0,1.0,0.0)⋅nΓ) + 
-                (cotθ2) * (x*w)  ) * sinθ )dΓ +
-    ∫( 0.5/R*L*( ( (cscθ2)*x_old*x + R*R*∇ᵈ(x,nΓ)⋅∇ᵈ(x_old,nΓ) )*
-    ( R*∇ᵈ(w,nΓ)⋅(TensorValue(0.0,-1.0,1.0,0.0)⋅nΓ) + cotθ*w ) ) * sinθ )dΓ
+    ∫( L*( R*R*(∇ᵈ(x,nΓ) ⊙ ∇ᵈ(w,nΓ)) + (cotθ*(x ⋅ ∇ᵈ(w,nΓ)) + cotθ*(w⋅∇ᵈ(x,nΓ)))⋅τ + 
+                (cotθ2) * (x⋅w)  ) * sinθ )dΓ +
+    ∫( 0.5/R*L*( ( (cscθ2)*(x_old⋅x) + R*R * ∇ᵈ(x,nΓ) ⊙ ∇ᵈ(x_old,nΓ) )*
+    ( R*∇ᵈ(w,nΓ)⋅τ + cotθ * w )⋅τ ) * sinθ )dΓ
 
   # New membrane equation
   a(L,M,R,x_old,x,w) = aᴹ(M,R,x_old,x,w) + aᴸ(L,R,x_old,x,w)
 
   # Preserve mass term for Backward Euler time integration
-  m(MCA_b,Δt,x,w) = ∫( ( (χ*MCA_b) * (x*w) / Δt )*y )dΓ
+  m(MCA_b,Δt,x,w) = ∫( ( (χ*MCA_b) * (x⋅w) / Δt )*y )dΓ
  
 
   mMCA,aMCAb,bMCAb,aMCAu,bMCAu = MCA_bound_unbound_weak_forms(
     Δt,kon,koff,λᵇ,λ,R2,D,nΓ,dΓ)
 
-
+    
   #Now for v
-  aᵥ(MCA_b,v,w) =  ∫( ( η * (∇ᵈ(v,nΓ)⋅∇ᵈ(w,nΓ)) )*y )dΓ + ∫( ( (χ*MCA_b) * (v*w) )*y )dΓ
+  aᵥ(MCA_b,v,w) = ∫( ( η *( ∇ᵈ(v,nΓ) ⊙ ∇ᵈ(w,nΓ) ) )*y )dΓ + ∫( ( (χ*MCA_b) * (v⋅w) )*y )dΓ
   bᵥ(w,uh_MCAb,uh_x_old,uh_rho) = m(uh_MCAb,Δt,uh_x,w) - m(uh_MCAb,Δt,uh_x_old,w) + 
-    ∫( ( σₐ₀*(w*(∇ᵈ(uh_rho,nΓ)⋅(TensorValue(0.0,-1.0,1.0,0.0)⋅nΓ) )) )*y )dΓ # ∫(( gradrho*w )*y )dΓ no feedback is ∫( w*∇σₐ )dΓ
+    ∫( ( σₐ₀ * ( w ⋅ (∇ᵈ(uh_rho,nΓ) )) )*y )dΓ  
   Aᵥ(v,w) = aᵥ(uh_MCAb,v,w) + s₀v(v,w)
-  Bᵥ(w) = bᵥ(w,uh_MCAb,uh_x_old,uh_rho)
+  Bᵥ(w) = bᵥ(w,uh_MCAb,uh_x_old,uh_rho) 
   #We can now use MCA_b and x to solve v
-  op_v= AffineFEOperator(Aᵥ,Bᵥ,V,WD0)
+  op_v= AffineFEOperator(Aᵥ,Bᵥ,UVʷ,Vʷ)
 
   #SOLVING X AT t=0
-  aₓ(MCA_b,x,w) = ∫( ( (χ*MCA_b) * (x*w) / Δt )*y )dΓ + ∫( ( k * (∇ᵈ(x,nΓ)⋅∇ᵈ(w,nΓ)) )*y )dΓ  
-  bₓ(MCA_b,v,w) = ∫( ( χ*( MCA_b*v)*w )*y )dΓ
+  aₓ(MCA_b,x,w) = ∫( ( (χ*MCA_b) * (x⋅w) / Δt )*y )dΓ + ∫( ( k * (∇ᵈ(x,nΓ)⊙∇ᵈ(w,nΓ)) )*y )dΓ  
+  bₓ(MCA_b,v,w) = ∫( ( χ*( MCA_b)*v⋅w )*y )dΓ
   aₓ_0(x,w) = aₓ(0,x,w) 
-  b_0(w) =  bₓ(0,0,w)
-  op_x = AffineFEOperator(aₓ_0,b_0,X,WD0)
+  b_0(w) =  bₓ(0,uh_v,w)
+  op_x = AffineFEOperator(aₓ_0,b_0,UXʷ,Vʷ)
   uh_x = solve(op_x)
   uh_x_old =  uh_x
 
@@ -322,9 +347,7 @@ function run_mechanochemical_axisymmetric(χ,λ⁻²,η,T,Δt,part,
   op_MCAu = AffineFEOperator(AMCAu,BMCAu,RHO0,Q0)
   uh_MCAu = solve(op_MCAu)
   uh_MCAu_old = uh_MCAu
-
-  #SOLVING V AT t=0 using x, xold and rho
-  uh_v=zero(V)
+ 
   
   #define the production rates as vectors so that we can have heterogeneous α and β due to mechanics
   # α₀v = interpolate_everywhere(α₀,Rac) #zeros(num_qpoints) α₀v[:] .= α₀
@@ -334,29 +357,31 @@ function run_mechanochemical_axisymmetric(χ,λ⁻²,η,T,Δt,part,
   perm=sortperm(flat_alenΓ) # Permutation to order by increasing arclength
   flat_alenΓ = R2*flat_alenΓ[perm]
 
-  vt[1,:] = vcat(lazy_map(uh_v,xΓ)...)
-  xt[1,:] = vcat(lazy_map(uh_x,xΓ)...)
-  vt[1,:] = vt[1,perm]
-  xt[1,:] = xt[1,perm]
-  plotθ = vcat(lazy_map(θ,xΓ)...)
-  plotθ = plotθ[perm]
-  plotting("θ",plotθ,pPNG,"theta")
+  # vt[1,:] = vcat(lazy_map(uh_v,xΓ)...)
+  # xt[1,:] = vcat(lazy_map(uh_x,xΓ)...)
+  # vt[1,:] = vt[1,perm]
+  # xt[1,:] = xt[1,perm]
+  # plotθ = vcat(lazy_map(θ,xΓ)...)
+  # plotθ = plotθ[perm]
+  # plotting("θ",plotθ,pPNG,"theta")
   #print(get_cell_dof_values(θ))
 
-# Computing tension
-  mten(u,v) = ∫( (u*v)*y )dΓ
-  mten2(u,v) = ∫(( k*(∇ᵈ(u,nΓ)⋅(TensorValue(0.0,-1.0,1.0,0.0)⋅nΓ))*v)*y )dΓ
-  sten(u,v) = ∫( 10*γ₀*((nΓ⋅∇(u))⊙(nΓ⋅∇(v))) )dΩᶜ
+ # Computing tension
+  # mten(u,v) = ∫( (u*v)*y )dΓ
+  # mten2(u,v) = ∫(( k*(∇ᵈ(u,nΓ)⋅(TensorValue(0.0,-1.0,1.0,0.0)⋅nΓ))*v)*y )dΓ
+  # sten(u,v) = ∫( 10*γ₀*((nΓ⋅∇(u))⊙(nΓ⋅∇(v))) )dΩᶜ
 
-  Aten(u,v) = mten(u,v) + sten(u,v)
-  bten(v) = mten2(uh_x,v)
-  op_ten = AffineFEOperator(Aten,bten,Rac,Q0) 
+  # Aten(u,v) = mten(u,v) + sten(u,v)
+  # bten(v) = mten2(uh_x,v)
+  # op_ten = AffineFEOperator(Aten,bten,Rac,Q0) 
 
-  ten = solve(op_ten)
+  # ten = solve(op_ten)
 
-  tenaux=vcat(lazy_map(ten,xΓ)...)
-  tenaux=tenaux[perm] 
-  tensiont[1,:] = tenaux
+  ten = interpolate_everywhere(0,Rac) #initial tension zero for narrow
+
+  # tenaux=vcat(lazy_map(ten,xΓ)...)
+  # tenaux=tenaux[perm] 
+  # tensiont[1,:] = tenaux
 
   # #storing information of how alpha an beta behave spatially over time
   # for j in 1:1:(partition)
@@ -448,14 +473,15 @@ function run_mechanochemical_axisymmetric(χ,λ⁻²,η,T,Δt,part,
     racaux=vcat(lazy_map(uh_rac,xΓ)...)
     racaux=racaux[perm] 
     rac1=racaux[end] 
-    ten1=tenaux[end]
+    #ten1=tenaux[end]
     vCTErac = vCTE*threshold2(rac1,rac0,1.3*racaux[1])#velocity polimerization
     vₗ = vCTErac # 0.5
     #we introduce a slight relaxation for the membrane, decreases 2% x at the Boundary condition only
     dummyx0=dummyx0*0.9+Δt*vₗ
     xₗ = dummyx0
-    X = TrialFESpace(WD0,p->diri_x(p,x₀,xₗ))
-
+    #X = TrialFESpace(WD0,p->diri_x(p,x₀,xₗ))
+    UXʷ = TrialFESpace(Vʷ,p->diri_vecx(p,x₀,xₗ)) # vector space trial FE space for membrane compute_normal_displacement
+    
     sum_uh_a = ∑(∫(uh_rac)dΓ)
     sum_uh_b = ∑(∫(uh_rho)dΓ)
 
@@ -474,7 +500,7 @@ function run_mechanochemical_axisymmetric(χ,λ⁻²,η,T,Δt,part,
     # Updating v to solve MCAb and x
     A(x,w) = m(uh_MCAb,Δt,x,w) + a(Λ,M,R2,uh_x,x,w) + s₀x(x,w)
     B(w) = m(uh_MCAb,Δt,uh_x,w) + bₓ(uh_MCAb,uh_v,w)  
-    op_x = AffineFEOperator(A,B,X,WD0)
+    op_x = AffineFEOperator(A,B,UXʷ,Vʷ)
     uh_x = solve(op_x)
 
     op_MCAb= AffineFEOperator(AMCAb,BMCAb,RHO,Q0)
@@ -484,10 +510,9 @@ function run_mechanochemical_axisymmetric(χ,λ⁻²,η,T,Δt,part,
     op_MCAu= AffineFEOperator(AMCAu,BMCAu,RHO0,Q0)
     uh_MCAu=solve(op_MCAu)
     uh_MCAu_old=uh_MCAu
-
-
-    V = TrialFESpace( WD0,p->diri_v(p, v₀ , vₗ) )
-    op_v = AffineFEOperator(Aᵥ,Bᵥ,V,WD0)
+    
+    UVʷ = TrialFESpace(Vʷ,p->diri_vecv(p,v₀,vₗ)) # vector space trial FE space for cortex velocity
+    op_v = AffineFEOperator(Aᵥ,Bᵥ,UVʷ,Vʷ)
     uh_v = solve(op_v)# uh_v = interpolate_everywhere(f3,WD0) #
     #f4(x) = vCTE - vCTE/(R*π)*arclength(x)
     #uh_v = interpolate_everywhere(f4,WD0) 
@@ -519,17 +544,17 @@ function run_mechanochemical_axisymmetric(χ,λ⁻²,η,T,Δt,part,
 
 
 
-    op_ten = AffineFEOperator(Aten,bten,Rac,Q0) 
+    # op_ten = AffineFEOperator(Aten,bten,Rac,Q0) 
 
-    ten = solve(op_ten)
+    # ten = solve(op_ten)
 
 
-    vt[i+1,:] = vcat(lazy_map(uh_v,xΓ)...)
-    xt[i+1,:] = vcat(lazy_map(uh_x,xΓ)...)
-    vt[i+1,:] = vt[i+1,perm]
-    xt[i+1,:] = xt[i+1,perm]
-    tenaux = vcat(lazy_map(ten,xΓ)...)
-    tensiont[i+1,:] = tenaux[perm]
+    # vt[i+1,:] = vcat(lazy_map(uh_v,xΓ)...)
+    # xt[i+1,:] = vcat(lazy_map(uh_x,xΓ)...)
+    # vt[i+1,:] = vt[i+1,perm]
+    # xt[i+1,:] = xt[i+1,perm]
+    # tenaux = vcat(lazy_map(ten,xΓ)...)
+    # tensiont[i+1,:] = tenaux[perm]
 
     
   end 
