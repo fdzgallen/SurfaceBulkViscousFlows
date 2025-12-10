@@ -76,7 +76,7 @@ function rac_rho_weak_forms(Δt,dᵃ,dᵇ,Drac,Drho,α,β,α₀v,β₀v,rho0,MCA
   a_rac(rac,w,rho,MCA_b,α₀v) = (1/dᵃ) * mMCA(Δt,rac,w) + 
     ∫( ( Drac * (∇ᵈ(rac,nΓ)⋅∇ᵈ(w,nΓ)) )*y )dΓ + ∫( ( w*rac )*y )dΓ #+ ∫( ( w*rac * ( α₀v/(1+rho*rho) + α*((0.5 - threshold(MCA_b,rho0,MCAbth))) / (1+rho*rho) ) )*y )dΓ
   b_rac(w,rho,MCA_b,α₀v,rac_old) = (1/dᵃ) * mMCA(Δt,rac_old,w) + 
-    ∫( ( w*(α₀v + α*(0.5 - threshold(MCA_b,rho0,MCAbth)))/(1+rho*rho) )*y )dΓ  #∫( ( w*(a_t)*(α₀v/(1+rho*rho) + α*((0.5 - threshold(MCA_b,rho0,MCAbth)))/(1+rho*rho)) )*y )dΓ  
+    ∫( ( w*(α₀v + α*(1.0 - threshold(MCA_b,rho0,MCAbth)))/(1+rho*rho) )*y )dΓ  #∫( ( w*(a_t)*(α₀v/(1+rho*rho) + α*((0.5 - threshold(MCA_b,rho0,MCAbth)))/(1+rho*rho)) )*y )dΓ  
  
   a_rho(rho,w,ten,rac,β₀v) = (1/dᵇ)*mMCA(Δt,rho,w) + 
     ∫( ( Drho * (∇ᵈ(rho,nΓ)⋅∇ᵈ(w,nΓ)) )*y )dΓ + 

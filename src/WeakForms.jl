@@ -18,17 +18,21 @@ end
 
 
 
-function rac_rho_weak_forms2(Δt,dᵃ,dᵇ,Drac,Drho,nΓ,dΓ,tension,MCAb)
+function rac_rho_weak_forms2(Δt,dᵃ,dᵇ,Drac,Drho,nΓ,dΓ,α,β)
+  function threshold(x,x₀,xth)
+    return  (0.5 * (tanh∘(x/x₀ - xth/x₀)+1))
+  end
+  #(    α,β,,,,, tenth)
   #DEFINING the equations for Rac and Rho
   m2(Δt,A,w) = ∫( ( (A*w)/Δt )*y )dΓ
   advection(rac,w,v) =  ∫( (w*( ∇ᵈ(rac,nΓ)⋅v + rac*divᶜ(v,nΓ))  )*y )dΓ
 
   a_rac(rac,w,v) = (1/dᵃ) * m2(Δt,rac,w)   + ∫( ( Drac * (∇ᵈ(rac,nΓ)⋅∇ᵈ(w,nΓ)) )*y )dΓ + ∫( ( w*rac )*y )dΓ
-  b_rac(w,rho,α₀v,rac_old) = (1/dᵃ) * m2(Δt,rac_old,w) +   ∫( ( w*(α₀v)/(1+rho*rho) )*y )dΓ   
+  b_rac(w,rho,α₀v,rac_old, MCA_b,MCAbth,rho0) = (1/dᵃ) * m2(Δt,rac_old,w) +  ∫( ( w*(α₀v + α*(1.0 - threshold(MCA_b,rho0,MCAbth)))/(1+rho*rho) )*y )dΓ    
  
   a_rho(rho,w,v) = (1/dᵇ)*m2(Δt,rho,w) +  
     ∫( ( Drho * (∇ᵈ(rho,nΓ)⋅∇ᵈ(w,nΓ)) )*y )dΓ   + ∫( ( w*rho )*y )dΓ # + ∫( ( λʳᴬ*((rho*rho*rho)*w) )*y )dΓ  
-  b_rho(w,rac,β₀v,rho_old) = (1/dᵇ)*m2(Δt,rho_old,w) + ∫( ( w*(β₀v)/(1+rac*rac) )*y )dΓ 
+  b_rho(w,rac,β₀v,rho_old,ten,sig0,tenth) = (1/dᵇ)*m2(Δt,rho_old,w) + ∫( ( w*(β₀v + β*threshold(ten,sig0,tenth))/(1+rac*rac) )*y )dΓ 
 
   a_rac, b_rac, a_rho, b_rho
 end

@@ -91,6 +91,7 @@ end
 #function to run a single simulation with a few given parameters
 function run_mechanochemical_axisymmetric_vector( koff,kon,M0,D ,λᵇ,λʳᴬ,rac0,rho0,ten0,vCTE,tenth,sig0,MCAbth,
             dᵃ,α₀,Drac,αopto,dᵇ,β₀,Drho,βopto,wrac,  sigmaₐ⁰::Float64, sigmaρ⁰::Float64, Λ::Float64,M::Float64, k::Float64,
+            α::Float64,β::Float64,
             domain::Tuple{Vararg{Float64}},
             ls::AlgoimCallLevelSetFunction,
             Pe::Float64,
@@ -334,7 +335,7 @@ function run_mechanochemical_axisymmetric_vector( koff,kon,M0,D ,λᵇ,λʳᴬ,r
   ρₕ = interpolate_everywhere(4.0,Uᴿ) 
   Rₕ_old = Rₕ
   ρₕ_old = ρₕ
-  a_R, b_R, a_ρ, b_ρ = rac_rho_weak_forms2(Δt,dᵃ,dᵇ,Drac,Drho,nΓ,dΓ)
+  a_R, b_R, a_ρ, b_ρ = rac_rho_weak_forms2(Δt,dᵃ,dᵇ,Drac,Drho,nΓ,dΓ,α,β)
  
   #ezrin initialization
   mMCA,aMCAb,bMCAb,aMCAu,bMCAu = MCA_bound_unbound_weak_forms(
@@ -378,20 +379,6 @@ function run_mechanochemical_axisymmetric_vector( koff,kon,M0,D ,λᵇ,λʳᴬ,r
   # xₕ = solve(op_x) 
 
 
-
-  #SOLVE Rac AT t=0
-  Arac(rac,w) = a_R(rac,w,υₕ) + s₀R(rac,w)
-  Brac(w) = b_R(w,ρₕ,α₀v,Rₕ_old) #(w,rho,α₀v,rac_old)
-  op_rac = AffineFEOperator(Arac,Brac,Uᴿ,Vᴿ)
-  Rₕ = solve(op_rac)
-  Rₕ_old = Rₕ
-  #SOLVE Rho AT t=0
-  Arho(rho,w) = a_ρ(rho,w,υₕ) + s₀R(rho,w)
-  Brho(w) = b_ρ(w,Rₕ,β₀v,ρₕ_old) #(w,rac,β₀v,rho_old)
-  op_rho = AffineFEOperator(Arho,Brho,Uᴿ,Vᴿ)
-  ρₕ = solve(op_rho) 
-  ρₕ_old = ρₕ
-
   #MCA initialization
   uh_MCAb = interpolate_everywhere(kon*M0/(π*R2)/(koff+kon),Uᴿ)
   uh_MCAb_old = uh_MCAb
@@ -402,6 +389,30 @@ function run_mechanochemical_axisymmetric_vector( koff,kon,M0,D ,λᵇ,λʳᴬ,r
   Minitial = sum_uh_MCAu + sum_uh_MCAb 
   λ = conservation(sum_uh_MCAu,sum_uh_MCAb,Minitial)
 
+ # Computing tension
+  mten(u,v) = ∫( (u*v)*y )dΓ
+  mten2(u,v) = ∫(( k*( τ ⋅ ∇ᵈ(u,nΓ) ⋅ τ )*v)*y )dΓ
+  sten(u,v) = ∫( 10*γ₀*((nΓ⋅∇(u))⊙(nΓ⋅∇(v))) )dΩᶜ
+
+  Aten(u,v) = mten(u,v) + sten(u,v)
+  bten(v) = mten2(xₕ,v)
+  op_ten = AffineFEOperator(Aten,bten,Uᴿ,Vᴿ) 
+
+  ten = solve(op_ten)
+
+  #SOLVE Rac AT t=0
+  Arac(rac,w) = a_R(rac,w,υₕ) + s₀R(rac,w)
+  Brac(w) = b_R(w,ρₕ,α₀v,Rₕ_old,uh_MCAb ,MCAbth,rho0) #(w,rho,α₀v,rac_old)
+  op_rac = AffineFEOperator(Arac,Brac,Uᴿ,Vᴿ)
+  Rₕ = solve(op_rac)
+  Rₕ_old = Rₕ
+  #SOLVE Rho AT t=0
+  Arho(rho,w) = a_ρ(rho,w,υₕ) + s₀R(rho,w)
+  Brho(w) = b_ρ(w,Rₕ,β₀v,ρₕ_old,ten,sig0,tenth) #(w,rac,β₀v,rho_old)
+  op_rho = AffineFEOperator(Arho,Brho,Uᴿ,Vᴿ)
+  ρₕ = solve(op_rho) 
+  ρₕ_old = ρₕ
+  
   #SOLVE MCA_b AT t=0 vien initial velocity zero
   AMCAb(MCA_b,w) = aMCAb(MCA_b,υₕ,w) + s₀MCA(MCA_b,w)
   BMCAb(w) = bMCAb(w,uh_MCAu,uh_MCAb_old,λ) 
@@ -427,10 +438,14 @@ function run_mechanochemical_axisymmetric_vector( koff,kon,M0,D ,λᵇ,λʳᴬ,r
   σₐt = zeros(nΔt,num_qpoints)
   χt = zeros(nΔt,num_qpoints)
   vt = zeros(nΔt,num_qpoints)
+  xt = zeros(nΔt,num_qpoints)
   tent = zeros(nΔt,num_qpoints)
   _vt = vcat(lazy_map(υₕ ⋅ τ,xΓ)...) 
   vt[1,:] = _vt[perm] 
+  _xt = vcat(lazy_map(xₕ ⋅ τ,xΓ)...) 
+  xt[1,:] = _xt[perm] 
   MCAbt[1,:] = vcat(lazy_map(uh_MCAb,xΓ)...)[perm]
+  tent[1,:] = vcat(lazy_map(ten,xΓ)...)[perm] 
 
  
   function sigmaₐ(ρ,R)
@@ -440,17 +455,6 @@ function run_mechanochemical_axisymmetric_vector( koff,kon,M0,D ,λᵇ,λʳᴬ,r
 
   χR(R) = (χ₀.+χ*uh_MCAb)
  
- # Computing tension
-  mten(u,v) = ∫( (u*v)*y )dΓ
-  mten2(u,v) = ∫(( k*( τ ⋅ ∇ᵈ(u,nΓ) ⋅ τ )*v)*y )dΓ
-  sten(u,v) = ∫( 10*γ₀*((nΓ⋅∇(u))⊙(nΓ⋅∇(v))) )dΩᶜ
-
-  Aten(u,v) = mten(u,v) + sten(u,v)
-  bten(v) = mten2(xₕ,v)
-  op_ten = AffineFEOperator(Aten,bten,Uᴿ,Vᴿ) 
-
-  ten = solve(op_ten)
-  tent[1,:] = vcat(lazy_map(ten,xΓ)...)[perm] 
 
   for ti in 1:100 
     op_rho = AffineFEOperator(Arho,Brho,Uᴿ,Vᴿ)
@@ -489,6 +493,7 @@ function run_mechanochemical_axisymmetric_vector( koff,kon,M0,D ,λᵇ,λʳᴬ,r
 
     @info "Time step $i, time $(trunc(t, digits=4)) and time step $Δt"
 
+    
     assemᵛ = SparseMatrixAssembler(Tm,Tv,UVᵛ,Yᵛ)
     Aᵛ = nothing
     
@@ -504,8 +509,7 @@ function run_mechanochemical_axisymmetric_vector( koff,kon,M0,D ,λᵇ,λʳᴬ,r
     bˣ(w) = m(uh_MCAb,Δt,xₕ,w) + bₓ(uh_MCAb,υₕ,w)    
 
     op_x= AffineFEOperator(aˣ,bˣ,UXʷ,Vʷ)
-    xₕ = solve(op_x)
-    xₕtan = to_tangent_vector(xₕ,nΓ)
+    xₕ = solve(op_x) 
     op_ten = AffineFEOperator(Aten,bten,Uᴿ,Vᴿ) 
     ten = solve(op_ten)
     xₕ_old =  xₕ
@@ -515,6 +519,12 @@ function run_mechanochemical_axisymmetric_vector( koff,kon,M0,D ,λᵇ,λʳᴬ,r
 
     writesol && postprocess_all(φ,dΩᶜ.quad.trian,
       Rₕ,ρₕ,xₕ,υₕ,υₕtan,i=i,of=output_frequency,name=pVTU)
+
+    #boundary conditions for v and x 
+    Rₕaux = vcat(lazy_map(Rₕ,xΓ)...)[perm]   
+    vₗ = vCTE * threshold2( Rₕaux[end] , rac0 , 1.3*Rₕaux[1] ) #velocity polimerization  
+    _xₗ = xₗ*0.95 + Δt*vₗ #we introduce a slight relaxation for the membrane, decreases 5% x at the Boundary condition only
+    xₗ = _xₗ  
 
     UXʷ,UVʷ,Vʷ,UXᵛ,UVᵛ,Xᵛ,Yᵛ,Xʳ,Yʳ,Uᵉ,Vᵉ,Vᴿ,Uᴿ,dΩᶜ,dΓ,nΓ,φ = update_all!(i,t,Δt,υₕ,msₕ)
 
@@ -540,6 +550,8 @@ function run_mechanochemical_axisymmetric_vector( koff,kon,M0,D ,λᵇ,λʳᴬ,r
     χt[i,:] =  χ₀ .+ χ*MCAbt[i,:] #χR(ract[i,:]) 
     _vt = υₕ⋅τ
     vt[i,:]  = vcat(lazy_map(_vt,xΓ)...)[perm] 
+    _xt = xₕ⋅τ
+    xt[i,:]  = vcat(lazy_map(_xt,xΓ)...)[perm] 
     tent[i,:] = vcat(lazy_map(ten,xΓ)...)[perm]
     
     plotting("rac",ract[i,:],pPNG*"Rac_time/","$i")
@@ -547,7 +559,7 @@ function run_mechanochemical_axisymmetric_vector( koff,kon,M0,D ,λᵇ,λʳᴬ,r
     plotting("MCAb",MCAbt[i,:],pPNG*"MCAb_time/","$i") 
   end
   
-  plots_run_singlet(nΔt,vt,ract,rhot,pPNG,
-   num_qpoints,π*R2,Δt₀,T,flat_alenΓ,σₐt,χt)  #nΔt,vt,ract,rhot,pPNG,   partition,L,Δt,T,xplot
+  plots_run_singlet(nΔt,vt,xt,MCAbt,ract,rhot,pPNG,
+   num_qpoints,π*R2,Δt₀,T,flat_alenΓ,σₐt,χt,tent)  #nΔt,vt,ract,rhot,pPNG,   partition,L,Δt,T,xplot
 
 end
