@@ -49,14 +49,7 @@ function postprocess_all(φ,Ωᶜ,rac,rho,υₕ;i=0,of=1,name="plt")
 end
 
 
-function postprocess_all(φ,Ωᶜ,rac,rho,υₕ;i=0,of=1,name="plt")
-  if ( i % of == 0 )
-    writevtk(Ωᶜ,name*"_sur_$i",cellfields=["LS"=>φ.φ,"uₕ"=>υₕ,"rac"=>rac ,"rho"=>rho],nsubcells=4)
-  end
-end
-
-
-function postprocess_all(φ,Ωᶜ,rac,rho,xₕ,υₕ,υₕtan; i=0,of=1,name="plt")
+function postprocess_all_with_tangent(φ,Ωᶜ,rac,rho,xₕ,υₕ,υₕtan; i=0,of=1,name="plt")
   if ( i % of == 0 )
     writevtk(Ωᶜ,name*"_sur_$i",cellfields=["LS"=>φ.φ,"x"=>xₕ,"uₕ"=>υₕ,"uₕtan"=>υₕtan,"rac"=>rac ,"rho"=>rho],nsubcells=4)
   end

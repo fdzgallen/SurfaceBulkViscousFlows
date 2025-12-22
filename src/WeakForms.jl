@@ -217,15 +217,19 @@ function cortical_flow_problem_mechanochemical_axisymmetric(
   # Stabilisation term for velocity
   sᵘ(υ,μ) = ∫( γ * ((nΓ⋅ε(υ))⊙(nΓ⋅ε(μ))) )dΩᶜ
 
+  # ** weak tangentiality **
+  η = 10.0 / ((2/40)^2)
+  k(u,v) = ∫( η*((u⋅nΓ)*(v⋅nΓ)) )dΓ
+
   # Rigid body motion and volum constraint
   RB¹ = VectorValue(1.0,0.0)
   r¹(u,ℓ) = ∫( ( RB¹⋅(ℓ*u) )*y )dΓ
   r²(u,ℓ) = ∫( ( u⋅(ℓ*nΓ ) )*y )dΓ
 
-  aᵛ((υ,l¹,l²),(μ,ℓ¹,ℓ²)) =
-    aʷ(υ,μ) + aᶠ(υ,μ,ez) + sᵘ(υ,μ) + 
-    r¹(υ,ℓ¹) + r¹(μ,l¹) + r²(υ,ℓ²) + r²(μ,l²)
-  bᵛ((μ,ℓ¹,ℓ²)) = f(μ, ρₕ,ez)
+  aᵛ((υ,l¹),(μ,ℓ¹)) =
+    aʷ(υ,μ) + sᵘ(υ,μ) + k(υ,μ) + aᶠ(υ,μ,ez) +
+    r¹(υ,ℓ¹) + r¹(μ,l¹) # + r²(υ,ℓ²) + r²(μ,l²)
+  bᵛ((μ,ℓ¹)) = f(μ, ρₕ,ez)
 
   aᵛ, bᵛ
 end

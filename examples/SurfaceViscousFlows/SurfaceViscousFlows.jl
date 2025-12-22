@@ -8,7 +8,7 @@ using SurfaceBulkViscousFlows
 # CAN USE IN TERMINAL BEFORE RUNNING THIS TO ACCELERATE RUNNING TIME BY MULTITHREADING
 # export OMP_NUM_THREADS=1 && export JULIA_NUM_THREADS=8
 
-domain = (-1.2,1.2,0.0,1.2)
+domain = (-1.2,0.8,0.0,1.2)
 
 R = 1.0 # [um] Cell size length
 
@@ -18,9 +18,9 @@ ls = AlgoimCallLevelSetFunction(
 
 Pe = 30.0
 τᵈkₒ = 10.0
-n  = 40
-Δt = 0.0002
-T  = 0.09
+n  = 20
+Δt = 0.002
+T  = 0.9
 output_frequency = 1
 
 #Rac Coefficients
@@ -53,12 +53,12 @@ M0 = 0.1 #total amount of ezrin
 η = 1000.0  # [pN s/ um] 2D viscosity of the cortex
 #λ = sqrt( η*R*π /(χ*R*R*π*π*M0) ) #\bar λ in the suppl material. Adimensional lenthscale
 σₐ⁰ = 0.0#.4
-sigmaₐ⁰ = 0.8 #basal active tension for the cortex
-sigmaρ⁰ = 0.8 #rho dependent active tension for the cortex
+sigmaₐ⁰ = 0.0 #basal active tension for the cortex
+sigmaρ⁰ = 0.0 #rho dependent active tension for the cortex
 
 k = 1.0            # [pN /um] elastic constant for the membrane
 rac0 = 0.01 # ADIMENSINAlizes rac switch for protrusion, changes the slope of the threshold function
-vCTE = 0.05 #Scale for the polimerizatio velocity
+vCTE = -0.03 #Scale for the polimerizatio velocity
 ten0 = 10000.0 #denominator for protrusion dependence on tension
 tenth = 0.001 #threshold for tension to activate rho
 sig0 = 2.00  #adimensionalizes the tension term for rho
@@ -72,7 +72,7 @@ M = trunc(M,digits=2)
 
 # name="SurfaceViscousFlows/velocity_on/rho-rac 5 better friction T=$T dt=$Δt alpha=$α₀ beta=$β₀ da=$dᵃ db= $dᵇ Drac=Drho=$Drac/sig_a=$σₐ⁰ x0=$χ₀ x=$χ sigmarho=1 sigmaR=1 sa=1/"
 #name="SurfaceViscousFlows/conserved/test lowrac T=$T dt=$Δt alpha=$α₀ beta=$β₀ da=$dᵃ db= $dᵇ Drac=Drho=$Drac/sig_a=$σₐ⁰ rac_t=$rac_total rho_t=$rho_total  x0=$χ₀ x=$χ sigmarho=1 sigmaR=1 sa=1/"
-name="SurfaceViscousFlows/mechanochemical/BCs mechchem T=$T dt=$Δt alpha=$α₀ beta=$β₀ da=$dᵃ db= $dᵇ Drac=Drho=$Drac/vC=$vCTE k=$k sig_a=$sigmaρ⁰ a=$α b=$β  x0=$χ₀ x=$χ/"
+name="SurfaceViscousFlows/mechanochemical/BCs mechchem T=$T dt=$Δt alpha=$α₀ beta=$β₀ da=$dᵃ db= $dᵇ Drac=Drho=$Drac/New xvlong vC=$vCTE k=$k sig_a=$sigmaρ⁰ a=$α b=$β  x0=$χ₀ x=$χ/"
 mkpath(name)
 
 GridapPETSc.with() do

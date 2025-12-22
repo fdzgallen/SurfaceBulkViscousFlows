@@ -3,7 +3,7 @@
 # Different mechanical parametes can eb changed in the main section of the code.
 # One can work with pure local inhibition by changing the following mechanical parameters:
 # vCTE=0   α=0   β=0   σₐ₀=0
-# Written by Andreu F Gallen working in Turlier lab and in collaboration with Orion Weiner's lab
+# Written by Andreu F Gallen (working in Turlier lab) and Eric Neiva, in collaboration with Orion Weiner's lab
 
 include("Plots_RhoRacA.jl") 
 
@@ -34,11 +34,11 @@ function cotθ(x)
 end
 
 function cotθ2(x)
-  return  cotθ(x)*cotθ(x)  #  cosθ(x)/sinθ(x)
+  return  cotθ(x)*cotθ(x)
 end
 
 function cotθ3(x)
-  return  cotθ(x)*cotθ(x)*cotθ(x) #  cosθ(x)/sinθ(x)
+  return  cotθ(x)*cotθ(x)*cotθ(x)
 end
 
 function cscθ2(x)
@@ -203,10 +203,15 @@ function run_mechanochemical_axisymmetric_vector( koff,kon,M0,D ,λᵇ,λʳᴬ,r
 
     # Test FE spaces
 
+    τ = TensorValue(0.0,-1.0, 1.0, 0.0) ⋅ nΓ    # vector tangente 
+
+    diri_x(p,x₀,xₗ) = p[1] < 0 ? VectorValue(0,x₀) : VectorValue(0,xₗ) # x₀ on negative x coordinate, xₗ otherwise  
+    diri_v(p,v₀,vₗ) = p[1] < 0 ? VectorValue(0,v₀) : VectorValue(0,vₗ) # v₀ on negative x coordinate, vₗ otherwise
+
     # u-surface
-    Vʷ = TestFESpace(Ωᶜ,reffeʷ,dirichlet_tags=[5]) # vector space test FE space
-    UXʷ = TrialFESpace(Vʷ,p->diri_vecx(p,x₀,xₗ)) # vector space trial FE space for membrane displacement
-    UVʷ = TrialFESpace(Vʷ,p->diri_vecv(p,v₀,vₗ)) # vector space trial FE space for cortex velocity
+    Vʷ = TestFESpace(Ωᶜ,reffeʷ,dirichlet_tags=[5,8]) # vector space test FE space
+    UXʷ = TrialFESpace(Vʷ,[p->VectorValue(0,x₀),p->-1.0*xₗ*τ(p)]) # vector space trial FE space for membrane displacement
+    UVʷ = TrialFESpace(Vʷ,[p->VectorValue(0,v₀),p->-1.0*vₗ*τ(p)]) # vector space trial FE space for cortex velocity
     # e-surface
     Vᵉ = TestFESpace(Ωᶜ,reffeᵉ)
     # Rac-Rho surface
@@ -221,10 +226,10 @@ function run_mechanochemical_axisymmetric_vector( koff,kon,M0,D ,λᵇ,λʳᴬ,r
     Uˡ = TrialFESpace(Vˡ)
 
     # Multifield FE spaces
-    Yᵛ = MultiFieldFESpace([Vʷ,Vˡ,Vˡ])
-    Xᵛ = MultiFieldFESpace([Uʷ,Uˡ,Uˡ])
-    UXᵛ = MultiFieldFESpace([UXʷ,Uˡ,Uˡ])
-    UVᵛ = MultiFieldFESpace([UVʷ,Uˡ,Uˡ])
+    Yᵛ = MultiFieldFESpace([Vʷ,Vˡ])
+    Xᵛ = MultiFieldFESpace([Uʷ,Uˡ])
+    UXᵛ = MultiFieldFESpace([UXʷ,Uˡ])
+    UVᵛ = MultiFieldFESpace([UVʷ,Uˡ])
 
     # Space to create homogeneous perturbation  
     # of constant concentration myosin field
@@ -259,21 +264,19 @@ function run_mechanochemical_axisymmetric_vector( koff,kon,M0,D ,λᵇ,λʳᴬ,r
   m₀ = 2.0
   R2=1
   R=1
-  nΔt = trunc(Int,T/Δt+0.5)+1
+  nΔt = trunc(Int,T/Δt+0.5)+1 
 
   #Starting Boundary conditions
   x₀ = 0.0
-  xₗ = 0.0
-  diri_vecx(p,x₀,xₗ) = p[1] < 0 ? VectorValue(0,x₀) : VectorValue(0,xₗ) # x₀ on negative x coordinate, xₗ otherwise  
+  xₗ = 0.0 
   v₀ = 0.0
   vₗ = 0.0
-  diri_vecv(p,v₀,vₗ) = p[1] < 0 ?  VectorValue(0,v₀) : VectorValue(0,vₗ)  # v₀ on negative x coordinate, vₗ otherwise  
 
   update_buffer!(0,t₀,Δt,u₀,m₀)
   UXʷ,UVʷ,Vʷ,UXᵛ,UVᵛ,Xᵛ,Yᵛ,Xʳ,Yʳ,Uᵉ,Vᵉ,Vᴿ,Uᴿ,dΩᶜ,dΓ,nΓ,φ = update_all!(0,t₀,Δt,u₀,m₀)
 
-  τ = TensorValue(0.0,-1.0, 1.0, 0.0) ⋅ nΓ    # vector tangente
-  
+  τ = TensorValue(0.0,-1.0, 1.0, 0.0) ⋅ nΓ    # vector tangente 
+
   # *** WEAK FORM PARAMETERS ***
   ξ(e) = 2.0 * e*e / ( 1.0 + e*e )
   # ** u-stabilisation **
@@ -308,6 +311,9 @@ function run_mechanochemical_axisymmetric_vector( koff,kon,M0,D ,λᵇ,λʳᴬ,r
   α₀opto2(x) = α₀ + αopto * exp( -0.5 * ( arclength(x)-π*R2 )^2 / ((wrac)^2) )
   β₀opto2(x) = β₀ + βopto * exp( -0.5 * ( arclength(x))^2       / ((wrac)^2) )
 
+  vlong(x) = vₗ * exp( -0.5 * ( arclength(x)-π*R2 )^2 / (( 4*h)^2) )
+  xlong(x) = xₗ * exp( -0.5 * ( arclength(x)-π*R2)^2 / (( 4*h)^2) )
+
   γ₀ = 0.1  / h # TODO: Eric reviews the scaling with h
   γ₀R =  0.1  / h  
   γ₀M =  0.1  / h  
@@ -330,7 +336,7 @@ function run_mechanochemical_axisymmetric_vector( koff,kon,M0,D ,λᵇ,λʳᴬ,r
   α₀v = solve(op_α₀)
   β₀v = solve(op_β₀)
 
-  #Rac and Rho initialization
+  #Rac and Rho initialization.3
   Rₕ = interpolate_everywhere(0.0,Uᴿ) 
   ρₕ = interpolate_everywhere(4.0,Uᴿ) 
   Rₕ_old = Rₕ
@@ -368,10 +374,15 @@ function run_mechanochemical_axisymmetric_vector( koff,kon,M0,D ,λᵇ,λʳᴬ,r
     ∫( 0.5/R*L*( ( (cscθ2)*(x_old⋅x) + R*R * ∇ᵈ(x,nΓ) ⊙ ∇ᵈ(x_old,nΓ) )*
     ( R*∇ᵈ(w,nΓ)⋅τ + cotθ * w )⋅τ ) * sinθ )dΓ
  
-  bₓ(MCA_b,v,w) = ∫( ( χ*( MCA_b)*v⋅w )*y )dΓ
+  bₓ(MCA_b,v,w) = ∫( ( χ*( MCA_b)*v⋅w ) * (R*R) * sinθ )dΓ
   # Preserve mass term for Backward Euler time integration
-  m(MCA_b,Δt,x,w) = ∫( ( (χ*MCA_b) * (x⋅w) / Δt )*y )dΓ
+  m(MCA_b,Δt,x,w) = ∫( ( (χ*MCA_b) * (x⋅w) / Δt ) * (R*R) * sinθ )dΓ
 
+  # ** weak tangentiality **
+  η = 10.0 / ((2/40)^2)
+  wt(x,w) = ∫( η*((x⋅nΓ)*(w⋅nΓ)) )dΓ
+
+  mυ(Δt,v,w) = ∫( ( (v⋅w) / Δt )*y )dΓ
   #SOLVING X AT t=0 
   # A(x,w) = m(0,Δt,x,w) + a(Λ,M,R2,xₕ,x,w) + s₀x(x,w)
   # B(w) = m(0,Δt,xₕ,w) + bₓ(0,υₕ,w)   
@@ -474,13 +485,13 @@ function run_mechanochemical_axisymmetric_vector( koff,kon,M0,D ,λᵇ,λʳᴬ,r
   end
 
   while t < T + tol
-    if i > 100
+    if i > 10
       op_α₀ = AffineFEOperator(A₀opto,bα₀opto2,Uᴿ,Vᴿ)
       op_β₀ = AffineFEOperator(A₀opto,bβ₀opto2,Uᴿ,Vᴿ)
       α₀v = solve(op_α₀)
       β₀v = solve(op_β₀)
     end
-    if i > 200
+    if i > 20
       op_α₀ = AffineFEOperator(A₀opto,bα₀opto,Uᴿ,Vᴿ)
       op_β₀ = AffineFEOperator(A₀opto,bβ₀opto,Uᴿ,Vᴿ)
       α₀v = solve(op_α₀)
@@ -503,21 +514,25 @@ function run_mechanochemical_axisymmetric_vector( koff,kon,M0,D ,λᵇ,λʳᴬ,r
     υₕ,_ = _solve_problem(Aᵛ,Bᵛ,UVᵛ,ps)
     υₕtan = to_tangent_vector(υₕ,nΓ) #υₕ⋅(TensorValue(0.0,-1.0,1.0,0.0)⋅nΓ)#⋅(VectorValue(0.0,-1.0,1.0,0.0)⋅nΓ)
 
+    @info "Problem solved"
+
     msₕ = get_maximum_magnitude_with_dirichlet(υₕ)
   
-    aˣ(x,w) = m(uh_MCAb,Δt,x,w)  + aᴸ(Λ,R2,xₕ_old,x,w) + aᴹ(M,R2,xₕ_old,x,w) + s₀x(x,w) #a(Λ,M,R2,xₕ,x,w) 
+    aˣ(x,w) = m(uh_MCAb,Δt,x,w) + aᴸ(Λ,R2,xₕ,x,w) + aᴹ(M,R2,xₕ,x,w) + s₀x(x,w) + wt(x,w) #a(Λ,M,R2,xₕ,x,w) 
     bˣ(w) = m(uh_MCAb,Δt,xₕ,w) + bₓ(uh_MCAb,υₕ,w)    
 
-    op_x= AffineFEOperator(aˣ,bˣ,UXʷ,Vʷ)
-    xₕ = solve(op_x) 
-    op_ten = AffineFEOperator(Aten,bten,Uᴿ,Vᴿ) 
-    ten = solve(op_ten)
-    xₕ_old =  xₕ
+    # op_x= AffineFEOperator(aˣ,bˣ,UXʷ,Vʷ)
+    # xₕ = solve(op_x) 
+    # op_ten = AffineFEOperator(Aten,bten,Uᴿ,Vᴿ) 
+    # ten = solve(op_ten)
+    # xₕ_old =  xₕ
+
+    @info "Problem solved"
 
     i = i + 1
     t = t + Δt
 
-    writesol && postprocess_all(φ,dΩᶜ.quad.trian,
+    writesol && postprocess_all_with_tangent(φ,dΩᶜ.quad.trian,
       Rₕ,ρₕ,xₕ,υₕ,υₕtan,i=i,of=output_frequency,name=pVTU)
 
     #boundary conditions for v and x 
