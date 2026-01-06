@@ -311,13 +311,14 @@ function run_mechanochemical_axisymmetric_vector( koff,kon,M0,D ,λᵇ,λʳᴬ,r
   α₀opto2(x) = α₀ + αopto * exp( -0.5 * ( arclength(x)-π*R2 )^2 / ((wrac)^2) )
   β₀opto2(x) = β₀ + βopto * exp( -0.5 * ( arclength(x))^2       / ((wrac)^2) )
 
-  vlong(x) = vₗ * exp( -0.5 * ( arclength(x)-π*R2 )^2 / (( 4*h)^2) )
-  xlong(x) = xₗ * exp( -0.5 * ( arclength(x)-π*R2)^2 / (( 4*h)^2) )
+  vlong(x) = vₗ * exp( -0.5 * ( arclength(x)-π*R2 )^2 / (( 3*h)^2)) ⋅ τ(x)
+  xlong(x) = xₗ * exp( -0.5 * ( arclength(x)-π*R2)^2 / (( 3*h)^2) ) ⋅ τ(x)
 
   γ₀ = 0.1  / h # TODO: Eric reviews the scaling with h
   γ₀R =  0.1  / h  
   γ₀M =  0.1  / h  
   m₀opto(u,v) = ∫( u*v )dΓ
+  mv₀opto(u,v) = ∫( u ⋅ v )dΓ
   s₀opto(u,v) = ∫( γ₀*((nΓ⋅∇(u))⊙(nΓ⋅∇(v))) )dΩᶜ
   s₀R(u,v) = ∫( γ₀R*((nΓ⋅∇(u))⊙(nΓ⋅∇(v))) )dΩᶜ
   s₀MCA(u,v) = ∫( γ₀M*((nΓ⋅∇(u))⊙(nΓ⋅∇(v))) )dΩᶜ 
@@ -325,6 +326,7 @@ function run_mechanochemical_axisymmetric_vector( koff,kon,M0,D ,λᵇ,λʳᴬ,r
   λ=0.0
 
   A₀opto(u,v) = m₀opto(u,v) + s₀opto(u,v)
+  Av₀opto(u,v) = mv₀opto(u,v) + s₀opto(u,v)
   bα₀opto(v) = m₀opto(α₀opto,v)
   bβ₀opto(v) = m₀opto(β₀opto,v)
   bα₀opto2(v) = m₀opto(α₀opto2,v)
@@ -336,6 +338,15 @@ function run_mechanochemical_axisymmetric_vector( koff,kon,M0,D ,λᵇ,λʳᴬ,r
   α₀v = solve(op_α₀)
   β₀v = solve(op_β₀)
 
+  bvlopto2(v) = mv₀opto(vlong,v)
+  bxlopto2(v) = mv₀opto(xlong,v)
+
+  op_vl = AffineFEOperator(Av₀opto,bvlopto2,UVʷ,Vʷ)
+  op_xl = AffineFEOperator(Av₀opto,bxlopto2,UXʷ,Vʷ)
+ 
+  vl = solve(op_vl)
+  xl = solve(op_xl)
+  
   #Rac and Rho initialization.3
   Rₕ = interpolate_everywhere(0.0,Uᴿ) 
   ρₕ = interpolate_everywhere(4.0,Uᴿ) 
@@ -512,11 +523,18 @@ function run_mechanochemical_axisymmetric_vector( koff,kon,M0,D ,λᵇ,λʳᴬ,r
         ρₕ,uh_MCAb,dΩᶜ,dΓ,nΓ,γʷ,Pe,χ,χ₀,activity,sigmaₐ⁰,  sigmaρ⁰)
     Aᵛ,Bᵛ = _assemble_problem(aᵛ,bᵛ,assemᵛ,UVᵛ,Yᵛ,Aᵛ)
     υₕ,_ = _solve_problem(Aᵛ,Bᵛ,UVᵛ,ps)
+
+      op_vl = AffineFEOperator(Av₀opto,bvlopto2,UVʷ,Vʷ)
+      op_xl = AffineFEOperator(Av₀opto,bxlopto2,UXʷ,Vʷ)
+    
+      vl = solve(op_vl)
+      xl = solve(op_xl)
+    υₕ =  υₕ + vl
     υₕtan = to_tangent_vector(υₕ,nΓ) #υₕ⋅(TensorValue(0.0,-1.0,1.0,0.0)⋅nΓ)#⋅(VectorValue(0.0,-1.0,1.0,0.0)⋅nΓ)
 
     @info "Problem solved"
 
-    msₕ = get_maximum_magnitude_with_dirichlet(υₕ)
+    msₕ = 0#get_maximum_magnitude_with_dirichlet(υₕ)
   
     aˣ(x,w) = m(uh_MCAb,Δt,x,w) + aᴸ(Λ,R2,xₕ,x,w) + aᴹ(M,R2,xₕ,x,w) + s₀x(x,w) + wt(x,w) #a(Λ,M,R2,xₕ,x,w) 
     bˣ(w) = m(uh_MCAb,Δt,xₕ,w) + bₓ(uh_MCAb,υₕ,w)    
@@ -539,8 +557,10 @@ function run_mechanochemical_axisymmetric_vector( koff,kon,M0,D ,λᵇ,λʳᴬ,r
     Rₕaux = vcat(lazy_map(Rₕ,xΓ)...)[perm]   
     vₗ = vCTE * threshold2( Rₕaux[end] , rac0 , 1.3*Rₕaux[1] ) #velocity polimerization  
     _xₗ = xₗ*0.95 + Δt*vₗ #we introduce a slight relaxation for the membrane, decreases 5% x at the Boundary condition only
-    xₗ = _xₗ  
+    xₗ = _xₗ 
 
+    xl = solve(op_xl)
+  
     UXʷ,UVʷ,Vʷ,UXᵛ,UVᵛ,Xᵛ,Yᵛ,Xʳ,Yʳ,Uᵉ,Vᵉ,Vᴿ,Uᴿ,dΩᶜ,dΓ,nΓ,φ = update_all!(i,t,Δt,υₕ,msₕ)
 
     op_rho = AffineFEOperator(Arho,Brho,Uᴿ,Vᴿ)
