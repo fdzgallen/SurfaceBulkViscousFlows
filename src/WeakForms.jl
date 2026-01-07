@@ -226,10 +226,8 @@ function cortical_flow_problem_mechanochemical_axisymmetric(
   r¹(u,ℓ) = ∫( ( RB¹⋅(ℓ*u) )*y )dΓ
   r²(u,ℓ) = ∫( ( u⋅(ℓ*nΓ ) )*y )dΓ
 
-  aᵛ((υ,l¹),(μ,ℓ¹)) =
-    aʷ(υ,μ) + sᵘ(υ,μ) + k(υ,μ) + aᶠ(υ,μ,ez) +
-    r¹(υ,ℓ¹) + r¹(μ,l¹) # + r²(υ,ℓ²) + r²(μ,l²)
-  bᵛ((μ,ℓ¹)) = f(μ, ρₕ,ez)
+  aᵛ(υ,μ) = aʷ(υ,μ) + sᵘ(υ,μ) + k(υ,μ) + aᶠ(υ,μ,ez)
+  bᵛ(μ) = f(μ, ρₕ,ez)
 
   aᵛ, bᵛ
 end

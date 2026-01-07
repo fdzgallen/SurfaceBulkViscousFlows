@@ -52,7 +52,7 @@ function MCA_bound_unbound_weak_forms(Δt,kon,koff,λᵇ,λ,R2,D,nΓ,dΓ)
   τ = TensorValue(0.0,-1.0, 1.0, 0.0) ⋅ nΓ    # vector tangente
 
   mMCA(Δt,MCA_b,w) = ∫( ( (MCA_b*w)/Δt )*y )dΓ 
-  aMCAb(MCA_b,v,w) = ∫( ( (MCA_b*w)/Δt )*y )dΓ  + ∫( ( 0.0001 * (∇ᵈ(MCA_b,nΓ)⋅∇ᵈ(w,nΓ)) )*y )dΓ + 
+  aMCAb(MCA_b,v,w) = ∫( ( (MCA_b*w)/Δt )*y )dΓ + ∫( ( 0.0001 * (∇ᵈ(MCA_b,nΓ)⋅∇ᵈ(w,nΓ)) )*y )dΓ + 
     ∫( ( koff * ( MCA_b * w ) )*y )dΓ + 
     ∫( ( w * ( (v ⋅ τ) * (∇ᵈ(MCA_b,nΓ)⋅τ)))*y )dΓ  +  
     ∫( w * ( MCA_b * ( (τ ⋅ ∇ᵈ(v,nΓ)) ⋅ τ  ) ) * y )dΓ  
@@ -226,10 +226,10 @@ function run_mechanochemical_axisymmetric_vector( koff,kon,M0,D ,λᵇ,λʳᴬ,r
     Uˡ = TrialFESpace(Vˡ)
 
     # Multifield FE spaces
-    Yᵛ = MultiFieldFESpace([Vʷ,Vˡ])
+    Yᵛ = Vʷ
     Xᵛ = MultiFieldFESpace([Uʷ,Uˡ])
     UXᵛ = MultiFieldFESpace([UXʷ,Uˡ])
-    UVᵛ = MultiFieldFESpace([UVʷ,Uˡ])
+    UVᵛ = UVʷ
 
     # Space to create homogeneous perturbation  
     # of constant concentration myosin field
@@ -287,7 +287,7 @@ function run_mechanochemical_axisymmetric_vector( koff,kon,M0,D ,λᵇ,λʳᴬ,r
 
   # Compute initial condition for surface velocity
   _υₕ(x) = VectorValue(0.0,0.0)
-  υₕ  = interpolate_everywhere(_υₕ,UVᵛ[1])
+  υₕ  = interpolate_everywhere(_υₕ,UVᵛ)
   # Compute initial condition for membrane deformation
   _xₕ(x) = VectorValue(0.0,0.0)
   xₕ  = interpolate_everywhere(_xₕ,UXᵛ[1])
@@ -521,15 +521,15 @@ function run_mechanochemical_axisymmetric_vector( koff,kon,M0,D ,λᵇ,λʳᴬ,r
     
     aᵛ,bᵛ = cortical_flow_problem_mechanochemical_axisymmetric(
         ρₕ,uh_MCAb,dΩᶜ,dΓ,nΓ,γʷ,Pe,χ,χ₀,activity,sigmaₐ⁰,  sigmaρ⁰)
-    Aᵛ,Bᵛ = _assemble_problem(aᵛ,bᵛ,assemᵛ,UVᵛ,Yᵛ,Aᵛ)
-    υₕ,_ = _solve_problem(Aᵛ,Bᵛ,UVᵛ,ps)
+    op = AffineFEOperator(aᵛ,bᵛ,UVᵛ,Yᵛ)
+    υₕ = solve(op)
 
       op_vl = AffineFEOperator(Av₀opto,bvlopto2,UVʷ,Vʷ)
       op_xl = AffineFEOperator(Av₀opto,bxlopto2,UXʷ,Vʷ)
     
       vl = solve(op_vl)
       xl = solve(op_xl)
-    υₕ =  υₕ + vl
+    # υₕ =  υₕ + vl
     υₕtan = to_tangent_vector(υₕ,nΓ) #υₕ⋅(TensorValue(0.0,-1.0,1.0,0.0)⋅nΓ)#⋅(VectorValue(0.0,-1.0,1.0,0.0)⋅nΓ)
 
     @info "Problem solved"

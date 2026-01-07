@@ -20,7 +20,7 @@ Pe = 30.0
 τᵈkₒ = 10.0
 n  = 20
 Δt = 0.002
-T  = 0.9
+T  = 0.1
 output_frequency = 1
 
 #Rac Coefficients
