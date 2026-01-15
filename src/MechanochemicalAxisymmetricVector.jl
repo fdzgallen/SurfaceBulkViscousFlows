@@ -15,7 +15,7 @@ function plotting(ylab,po,pPNG,i)
 end
 
 function conservation(sMCAu,sMCAb,Minitial)
-  return 2.0*(Minitial-(sMCAu+sMCAb))
+  return 40.0*(Minitial-(sMCAu+sMCAb))
 end
  
 function threshold(x,x₀,xth)
@@ -52,12 +52,12 @@ function MCA_bound_unbound_weak_forms(Δt,kon,koff,λᵇ,λ,R2,D,nΓ,dΓ)
   τ = TensorValue(0.0,-1.0, 1.0, 0.0) ⋅ nΓ    # vector tangente
 
   mMCA(Δt,MCA_b,w) = ∫( ( (MCA_b*w)/Δt )*y )dΓ 
-  aMCAb(MCA_b,v,w) = ∫( ( (MCA_b*w)/Δt )*y )dΓ + ∫( ( 0.0001 * (∇ᵈ(MCA_b,nΓ)⋅∇ᵈ(w,nΓ)) )*y )dΓ + 
+  aMCAb(MCA_b,v,w) = ∫( ( (MCA_b*w)/Δt )*y )dΓ + ∫( ( 0.50 * (∇ᵈ(MCA_b,nΓ)⋅∇ᵈ(w,nΓ)) )*y )dΓ +  #diffusion term for stabilisation purposes only
     ∫( ( koff * ( MCA_b * w ) )*y )dΓ + 
     ∫( ( w * ( (v ⋅ τ) * (∇ᵈ(MCA_b,nΓ)⋅τ)))*y )dΓ  +  
     ∫( w * ( MCA_b * ( (τ ⋅ ∇ᵈ(v,nΓ)) ⋅ τ  ) ) * y )dΓ  
   bMCAb(w,MCA_u,MCAb_old,λ) = ∫( ( kon * ( MCA_u * w ) + (MCAb_old*w)/Δt )*y )dΓ  +
-    ∫( ( λ/(π*R2) * ( kon / (kon+koff) )* w )*y )dΓ  
+    ∫( ( λ/(π*R2) * ( kon / (kon+koff) )* w )*y )dΓ
 
   #Now for MCA unbound
   # mass term for the temporal evolution MCA_b0
@@ -256,6 +256,7 @@ function run_mechanochemical_axisymmetric_vector( koff,kon,M0,D ,λᵇ,λʳᴬ,r
   # Lets copy the code in the output folder to be able to check code used for each simulation
   cp(@__FILE__, pPNG*split(@__FILE__, "/")[end],force=true)
   cp("./src/WeakForms.jl", pPNG*"WeakForms.jl",force=true)
+  cp("./examples/SurfaceViscousFlows/SurfaceViscousFlows.jl", pPNG*"SurfaceViscousFlows.jl",force=true)
 
   # Time discretisation parameters
   t₀ = 0.0
@@ -309,24 +310,19 @@ function run_mechanochemical_axisymmetric_vector( koff,kon,M0,D ,λᵇ,λʳᴬ,r
   β₀opto(x) = β₀
 
   α₀opto2(x) = α₀ + αopto * exp( -0.5 * ( arclength(x)-π*R2 )^2 / ((wrac)^2) )
-  β₀opto2(x) = β₀ + βopto * exp( -0.5 * ( arclength(x))^2       / ((wrac)^2) )
-
-  vlong(x) = vₗ * exp( -0.5 * ( arclength(x)-π*R2 )^2 / (( 3*h)^2)) ⋅ τ(x)
-  xlong(x) = xₗ * exp( -0.5 * ( arclength(x)-π*R2)^2 / (( 3*h)^2) ) ⋅ τ(x)
+  β₀opto2(x) = β₀ + βopto * exp( -0.5 * ( arclength(x))^2       / ((wrac)^2) ) 
 
   γ₀ = 0.1  / h # TODO: Eric reviews the scaling with h
   γ₀R =  0.1  / h  
   γ₀M =  0.1  / h  
-  m₀opto(u,v) = ∫( u*v )dΓ
-  mv₀opto(u,v) = ∫( u ⋅ v )dΓ
+  m₀opto(u,v) = ∫( u*v )dΓ 
   s₀opto(u,v) = ∫( γ₀*((nΓ⋅∇(u))⊙(nΓ⋅∇(v))) )dΩᶜ
   s₀R(u,v) = ∫( γ₀R*((nΓ⋅∇(u))⊙(nΓ⋅∇(v))) )dΩᶜ
   s₀MCA(u,v) = ∫( γ₀M*((nΓ⋅∇(u))⊙(nΓ⋅∇(v))) )dΩᶜ 
   s₀x(υ,μ) = ∫( γʷ * ((nΓ⋅ε(υ))⊙(nΓ⋅ε(μ))) )dΩᶜ
   λ=0.0
 
-  A₀opto(u,v) = m₀opto(u,v) + s₀opto(u,v)
-  Av₀opto(u,v) = mv₀opto(u,v) + s₀opto(u,v)
+  A₀opto(u,v) = m₀opto(u,v) + s₀opto(u,v) 
   bα₀opto(v) = m₀opto(α₀opto,v)
   bβ₀opto(v) = m₀opto(β₀opto,v)
   bα₀opto2(v) = m₀opto(α₀opto2,v)
@@ -337,15 +333,6 @@ function run_mechanochemical_axisymmetric_vector( koff,kon,M0,D ,λᵇ,λʳᴬ,r
 
   α₀v = solve(op_α₀)
   β₀v = solve(op_β₀)
-
-  bvlopto2(v) = mv₀opto(vlong,v)
-  bxlopto2(v) = mv₀opto(xlong,v)
-
-  op_vl = AffineFEOperator(Av₀opto,bvlopto2,UVʷ,Vʷ)
-  op_xl = AffineFEOperator(Av₀opto,bxlopto2,UXʷ,Vʷ)
- 
-  vl = solve(op_vl)
-  xl = solve(op_xl)
   
   #Rac and Rho initialization.3
   Rₕ = interpolate_everywhere(0.0,Uᴿ) 
@@ -478,7 +465,7 @@ function run_mechanochemical_axisymmetric_vector( koff,kon,M0,D ,λᵇ,λʳᴬ,r
   χR(R) = (χ₀.+χ*uh_MCAb)
  
 
-  for ti in 1:100 
+  for ti in 1:200 
     op_rho = AffineFEOperator(Arho,Brho,Uᴿ,Vᴿ)
     ρₕ = solve(op_rho)
     ρₕ_old = ρₕ
@@ -495,14 +482,16 @@ function run_mechanochemical_axisymmetric_vector( koff,kon,M0,D ,λᵇ,λʳᴬ,r
     plotting("rho",rhott[:],pPNG*"Rho_time_initial/","$ti")
   end
 
+  msₕ = get_maximum_magnitude_with_dirichlet(υₕ)
+
   while t < T + tol
-    if i > 10
+    if i > 50
       op_α₀ = AffineFEOperator(A₀opto,bα₀opto2,Uᴿ,Vᴿ)
       op_β₀ = AffineFEOperator(A₀opto,bβ₀opto2,Uᴿ,Vᴿ)
       α₀v = solve(op_α₀)
       β₀v = solve(op_β₀)
     end
-    if i > 20
+    if i > 250
       op_α₀ = AffineFEOperator(A₀opto,bα₀opto,Uᴿ,Vᴿ)
       op_β₀ = AffineFEOperator(A₀opto,bβ₀opto,Uᴿ,Vᴿ)
       α₀v = solve(op_α₀)
@@ -514,52 +503,38 @@ function run_mechanochemical_axisymmetric_vector( koff,kon,M0,D ,λᵇ,λʳᴬ,r
     λ = conservation(i2,i1,Minitial)
 
     @info "Time step $i, time $(trunc(t, digits=4)) and time step $Δt"
-
-    
-    assemᵛ = SparseMatrixAssembler(Tm,Tv,UVᵛ,Yᵛ)
-    Aᵛ = nothing
+ 
     
     aᵛ,bᵛ = cortical_flow_problem_mechanochemical_axisymmetric(
         ρₕ,uh_MCAb,dΩᶜ,dΓ,nΓ,γʷ,Pe,χ,χ₀,activity,sigmaₐ⁰,  sigmaρ⁰)
     op = AffineFEOperator(aᵛ,bᵛ,UVᵛ,Yᵛ)
     υₕ = solve(op)
-
-      op_vl = AffineFEOperator(Av₀opto,bvlopto2,UVʷ,Vʷ)
-      op_xl = AffineFEOperator(Av₀opto,bxlopto2,UXʷ,Vʷ)
-    
-      vl = solve(op_vl)
-      xl = solve(op_xl)
-    # υₕ =  υₕ + vl
     υₕtan = to_tangent_vector(υₕ,nΓ) #υₕ⋅(TensorValue(0.0,-1.0,1.0,0.0)⋅nΓ)#⋅(VectorValue(0.0,-1.0,1.0,0.0)⋅nΓ)
 
-    @info "Problem solved"
+    #msₕ = get_maximum_magnitude_with_dirichlet(υₕ)
 
-    msₕ = 0#get_maximum_magnitude_with_dirichlet(υₕ)
-  
     aˣ(x,w) = m(uh_MCAb,Δt,x,w) + aᴸ(Λ,R2,xₕ,x,w) + aᴹ(M,R2,xₕ,x,w) + s₀x(x,w) + wt(x,w) #a(Λ,M,R2,xₕ,x,w) 
     bˣ(w) = m(uh_MCAb,Δt,xₕ,w) + bₓ(uh_MCAb,υₕ,w)    
 
-    # op_x= AffineFEOperator(aˣ,bˣ,UXʷ,Vʷ)
-    # xₕ = solve(op_x) 
-    # op_ten = AffineFEOperator(Aten,bten,Uᴿ,Vᴿ) 
-    # ten = solve(op_ten)
-    # xₕ_old =  xₕ
-
-    @info "Problem solved"
-
+    op_x= AffineFEOperator(aˣ,bˣ,UXʷ,Vʷ)
+    xₕ = solve(op_x) 
+    op_ten = AffineFEOperator(Aten,bten,Uᴿ,Vᴿ) 
+    ten = solve(op_ten)
+    xₕ_old =  xₕ
+ 
     i = i + 1
     t = t + Δt
 
     writesol && postprocess_all_with_tangent(φ,dΩᶜ.quad.trian,
-      Rₕ,ρₕ,xₕ,υₕ,υₕtan,i=i,of=output_frequency,name=pVTU)
+      Rₕ,ρₕ,xₕ,υₕ,υₕtan,uh_MCAb,ten,i=i,of=output_frequency,name=pVTU)
 
+    tent[i,:] = vcat(lazy_map(ten,xΓ)...)[perm]
     #boundary conditions for v and x 
     Rₕaux = vcat(lazy_map(Rₕ,xΓ)...)[perm]   
-    vₗ = vCTE * threshold2( Rₕaux[end] , rac0 , 1.3*Rₕaux[1] ) #velocity polimerization  
+    vₗ = vCTE * threshold2( Rₕaux[end] , rac0 , 1.3*Rₕaux[1] )/(1+tent[i,end]*tent[i,end]/ten0) #velocity polimerization  
     _xₗ = xₗ*0.95 + Δt*vₗ #we introduce a slight relaxation for the membrane, decreases 5% x at the Boundary condition only
     xₗ = _xₗ 
-
-    xl = solve(op_xl)
+ 
   
     UXʷ,UVʷ,Vʷ,UXᵛ,UVᵛ,Xᵛ,Yᵛ,Xʳ,Yʳ,Uᵉ,Vᵉ,Vᴿ,Uᴿ,dΩᶜ,dΓ,nΓ,φ = update_all!(i,t,Δt,υₕ,msₕ)
 
@@ -594,7 +569,9 @@ function run_mechanochemical_axisymmetric_vector( koff,kon,M0,D ,λᵇ,λʳᴬ,r
     plotting("MCAb",MCAbt[i,:],pPNG*"MCAb_time/","$i") 
   end
   
-  plots_run_singlet(nΔt,vt,xt,MCAbt,ract,rhot,pPNG,
+  # plots_run_singlet(nΔt,vt*0.0006,xt*6,MCAbt,ract,rhot,pPNG,
+  #  num_qpoints,π*R2*6,Δt₀*10000,T*10000,flat_alenΓ,σₐt,χt,tent*10)  #nΔt,vt,ract,rhot,pPNG,   partition,L,Δt,T,xplot
+  plots_run_singlet(nΔt,vt,xt*6,MCAbt,ract,rhot,pPNG,
    num_qpoints,π*R2,Δt₀,T,flat_alenΓ,σₐt,χt,tent)  #nΔt,vt,ract,rhot,pPNG,   partition,L,Δt,T,xplot
 
 end

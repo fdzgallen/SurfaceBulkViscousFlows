@@ -299,7 +299,7 @@ function plots_run_singlet(nΔt,vt,xt,ezrinbt,#ezrinut,
   savefig(pPNG*"xt.pdf")
 
   ρtplot=ezrinbt[5:plot_lines:end,:]
-  p2 = plot(xplot,transpose(ρtplot), legend=false, color = :matter, line_z = (1:n)',size=(300, 220), margin = 5px,linealpha=0.9,linewidth=1, framestyle = :box)
+  p4 = plot(xplot,transpose(ρtplot), legend=false, color = :matter, line_z = (1:n)',size=(300, 220), margin = 5px,linealpha=0.9,linewidth=1, framestyle = :box)
   #ylims!(0.045, 0.12)
   xlabel!("Cell perimeter (μm)")
   ylabel!("MCA protein")
@@ -339,7 +339,7 @@ function plots_run_singlet(nΔt,vt,xt,ezrinbt,#ezrinut,
   savefig(pPNG*"sigmat.pdf")
 
   χtplot=χt[:2:plot_lines:end,:]
-  p4 =plot(xplot,transpose(χtplot), legend=false,color =cgrad(:matter, rev=false), line_z = (1:n)',size=(300, 220), margin = 5px,linewidth=1, framestyle = :box)
+  plot(xplot,transpose(χtplot), legend=false,color =cgrad(:matter, rev=false), line_z = (1:n)',size=(300, 220), margin = 5px,linewidth=1, framestyle = :box)
   # ylims!(0, Ntot/L)
   xlabel!("Cell perimeter (μm)")
   ylabel!("χ")
