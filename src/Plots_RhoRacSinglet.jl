@@ -121,7 +121,7 @@ function plots_run_singlet(nΔt,vt,#ezrinbt,ezrinut,
    
   ractplot=ract[:,1]./ract[1,1]
   ractplot2=ract[:,partition]./ract[1,1]
-  plot(tplot,[ractplot ractplot2], label=["Front" "Back"], grid=false,size=(200, 220), margin = 5px,linewidth=1, framestyle = :box)
+  plot(tplot,[ractplot ractplot2], label=["Back" "Front"], grid=false,size=(200, 220), margin = 5px,linewidth=1, framestyle = :box)
   ylims!(0.5, 2.75)
   xlabel!("time (sec)")
   ylabel!("Rac a")
@@ -130,21 +130,22 @@ function plots_run_singlet(nΔt,vt,#ezrinbt,ezrinut,
 
   rhotplot=rhot[:,1]./rhot[1,1]
   rhotplot2=rhot[:,partition]./rhot[1,1]
-  plot(tplot,[rhotplot rhotplot2], label=["Front" "Back"], grid=false,size=(200, 220), margin = 5px,linewidth=1, framestyle = :box)
+  plot(tplot,[rhotplot rhotplot2], label=["Back" "Front"], grid=false,size=(200, 220), margin = 5px,linewidth=1, framestyle = :box)
   ylims!(0.5, 1.7)
   xlabel!("time (sec)")
   ylabel!("Rho b")
   # plot!(legend=:topright, legendcolumns=3)
   savefig(pPNG*"rho_2.pdf")
+  
 
-  # ρtplot=ezrinbt[:,1]./ezrinbt[1,1]
-  # ρtplot2=ezrinbt[:,partition]./ezrinbt[1,1]
-  # plot(tplot,[ρtplot ρtplot2], label=["Front" "Back"], grid=false,size=(200, 220), margin = 5px,linewidth=1, framestyle = :box)
-  # ylims!(0.5, 1.7)
-  # xlabel!("time (sec)")
-  # ylabel!("MCA")
-  # # plot!(legend=:topright, legendcolumns=3)
-  # savefig(pPNG*"MCA_2.pdf")
+  ρtplot=ezrinbt[:,1]./ezrinbt[1,1]
+  ρtplot2=ezrinbt[:,partition]./ezrinbt[1,1]
+  plot(tplot,[ρtplot ρtplot2], label=["Back" "Front"], grid=false,size=(200, 220), margin = 5px,linewidth=1, framestyle = :box)
+  ylims!(0.5, 1.7)
+  xlabel!("time (sec)")
+  ylabel!("MCA")
+  # plot!(legend=:topright, legendcolumns=3)
+  savefig(pPNG*"MCA_2.pdf")
   
 
   # ρtplot=ezrinut[:1:plot_lines:end,:]
@@ -360,7 +361,7 @@ function plots_run_singlet(nΔt,vt,xt,ezrinbt,#ezrinut,
 
   rhotplot=rhot[:,1]./rhot[1,1]
   rhotplot2=rhot[:,partition]./rhot[1,1]
-  plot(tplot,[rhotplot rhotplot2], label=["Front" "Back"], grid=false,size=(200, 220), margin = 5px,linewidth=1, framestyle = :box)
+  plot(tplot,[rhotplot rhotplot2], label=["Back" "Front"], grid=false,size=(200, 220), margin = 5px,linewidth=1, framestyle = :box)
   ylims!(0.5, 1.7)
   xlabel!("time (sec)")
   ylabel!("Rho b")
@@ -368,6 +369,15 @@ function plots_run_singlet(nΔt,vt,xt,ezrinbt,#ezrinut,
   savefig(pPNG*"rho_2.pdf")
  
 
+
+  ρtplot=ezrinbt[:,1]./ezrinbt[1,1]
+  ρtplot2=ezrinbt[:,partition]./ezrinbt[1,1]
+  plot(tplot,[ρtplot ρtplot2], label=["Back" "Front"], grid=false,size=(200, 220), margin = 5px,linewidth=1, framestyle = :box)
+  ylims!(0.5, 1.7)
+  xlabel!("time (sec)")
+  ylabel!("MCA")
+  # plot!(legend=:topright, legendcolumns=3)
+  savefig(pPNG*"MCA_2.pdf")
   
   vplot=vt[end,:]
   p1 = plot(xplot,vplot, legend=false,size=(300, 220), margin = 5px, alpha = 0.9)
@@ -542,14 +552,14 @@ function plots_run_singlet_turnover(nΔt,vt,#ezrinbt,ezrinut,
   # plot!(legend=:topright, legendcolumns=3)
   savefig(pPNG*"rho_2.pdf")
 
-  # ρtplot=ezrinbt[:,1]./ezrinbt[1,1]
-  # ρtplot2=ezrinbt[:,partition]./ezrinbt[1,1]
-  # plot(tplot,[ρtplot ρtplot2], label=["Front" "Back"], grid=false,size=(200, 220), margin = 5px,linewidth=1, framestyle = :box)
-  # ylims!(0.5, 1.7)
-  # xlabel!("time (sec)")
-  # ylabel!("MCA")
-  # # plot!(legend=:topright, legendcolumns=3)
-  # savefig(pPNG*"MCA_2.pdf")
+  ρtplot=ezrinbt[:,1]./ezrinbt[1,1]
+  ρtplot2=ezrinbt[:,partition]./ezrinbt[1,1]
+  plot(tplot,[ρtplot ρtplot2], label=["Front" "Back"], grid=false,size=(200, 220), margin = 5px,linewidth=1, framestyle = :box)
+  ylims!(0.5, 1.7)
+  xlabel!("time (sec)")
+  ylabel!("MCA")
+  # plot!(legend=:topright, legendcolumns=3)
+  savefig(pPNG*"MCA_2.pdf")
   
 
   # ρtplot=ezrinut[:1:plot_lines:end,:]

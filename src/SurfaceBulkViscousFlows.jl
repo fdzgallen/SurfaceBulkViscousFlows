@@ -19,6 +19,8 @@ using Symbolics
 using Plots
 using DelimitedFiles
 
+using Base: @kwdef # Para permitir la sintaxis Struct(campo=valor)
+
 import Random
 
 include("ActivityFunctions.jl")
@@ -60,5 +62,8 @@ export run_mechanochemical_axisymmetric_vector
 export run_singlet_axisymmetric
 
 export run_mechanochemical_axisymmetric_old
+
+export MechanicalParams, KineticParams, CouplingParams, SimControl
+
 
 end # module SurfaceBulkViscousFlows

@@ -30,8 +30,7 @@ function rac_rho_weak_forms2(Δt,dᵃ,dᵇ,Drac,Drho,nΓ,dΓ,α,β)
   a_rac(rac,w,v) = (1/dᵃ) * m2(Δt,rac,w)   + ∫( ( Drac * (∇ᵈ(rac,nΓ)⋅∇ᵈ(w,nΓ)) )*y )dΓ + ∫( ( w*rac )*y )dΓ
   b_rac(w,rho,α₀v,rac_old, MCA_b,MCAbth,rho0) = (1/dᵃ) * m2(Δt,rac_old,w) +  ∫( ( w*(α₀v + α*(1.0 - threshold(MCA_b,rho0,MCAbth)))/(1+rho*rho) )*y )dΓ    
  
-  a_rho(rho,w,v) = (1/dᵇ)*m2(Δt,rho,w) +  
-    ∫( ( Drho * (∇ᵈ(rho,nΓ)⋅∇ᵈ(w,nΓ)) )*y )dΓ   + ∫( ( w*rho )*y )dΓ # + ∫( ( λʳᴬ*((rho*rho*rho)*w) )*y )dΓ  
+  a_rho(rho,w,v) = (1/dᵇ)*m2(Δt,rho,w) +  ∫( ( Drho * (∇ᵈ(rho,nΓ)⋅∇ᵈ(w,nΓ)) )*y )dΓ   + ∫( ( w*rho )*y )dΓ  
   b_rho(w,rac,β₀v,rho_old,ten,sig0,tenth) = (1/dᵇ)*m2(Δt,rho_old,w) + ∫( ( w*(β₀v + β*threshold(ten,sig0,tenth))/(1+rac*rac) )*y )dΓ 
 
   a_rac, b_rac, a_rho, b_rho
@@ -233,12 +232,12 @@ function cortical_flow_problem_mechanochemical_axisymmetric(
 end
 
 
-function cortical_flow_problem_mechanochemical_axisymmetric_dimensional( μ ,
-    ρₕ,ez,dΩᶜ,dΓ,nΓ,γ::Float64,Pe::Float64,χᵣ::Float64,χ₀::Float64,ξ₀,sigmaₐ⁰,  sigmaρ⁰)
+function cortical_flow_problem_mechanochemical_axisymmetric_dimensional( η_visc ,
+    ρₕ,ez,dΩᶜ,dΓ,nΓ,γ::Float64,χᵣ::Float64,χ₀::Float64,ξ₀,sigmaₐ⁰,  sigmaρ⁰)
 
   # Viscous term
   aʷ(u,v) = 
-    ∫( μ*( εᶜ(u,nΓ)⊙εᵈ(v,nΓ) + divᶜ(u,nΓ)⋅divᶜ(v,nΓ) + 
+    ∫( η_visc*( εᶜ(u,nΓ)⊙εᵈ(v,nΓ) + divᶜ(u,nΓ)⋅divᶜ(v,nΓ) + 
          2*(u⋅iy)*(v⋅iy) + divᶜ(u,nΓ)*(v⋅iy) + 
          divᶜ(v,nΓ)*(u⋅iy) )*y )dΓ
  
@@ -257,7 +256,7 @@ function cortical_flow_problem_mechanochemical_axisymmetric_dimensional( μ ,
   f(μ, ρ,R) = ∫( ( -(divᶜ(μ,nΓ)+μ⋅iy)*(sigmaₐ∘(ρ,R)) ) * ξ₀ )dΓ 
 
   # Stabilisation term for velocity
-  sᵘ(υ,μ) = ∫( γ * ((nΓ⋅ε(υ))⊙(nΓ⋅ε(μ))) )dΩᶜ
+  sᵘ(υ,μ) = ∫( (η_visc * γ) * ((nΓ⋅ε(υ))⊙(nΓ⋅ε(μ))) )dΩᶜ
 
   # ** weak tangentiality **
   η = 10.0 / ((2/40)^2)
