@@ -214,7 +214,7 @@ function cortical_flow_problem_mechanochemical_axisymmetric(
   f(μ, ρ,R) = ∫( ( -(divᶜ(μ,nΓ)+μ⋅iy)*(sigmaₐ∘(ρ,R)) ) * ξ₀ )dΓ 
 
   # Stabilisation term for velocity
-  sᵘ(υ,μ) = ∫( γ * ((nΓ⋅ε(υ))⊙(nΓ⋅ε(μ))) )dΩᶜ
+  sᵘ(υ,μ) = ∫( γ * ((nΓ ⋅ ε(υ))⊙(nΓ⋅ε(μ))) )dΩᶜ
 
   # ** weak tangentiality **
   η = 10.0 / ((2/40)^2)
@@ -226,13 +226,13 @@ function cortical_flow_problem_mechanochemical_axisymmetric(
   r²(u,ℓ) = ∫( ( u⋅(ℓ*nΓ ) )*y )dΓ
 
   aᵛ(υ,μ) = aʷ(υ,μ) + sᵘ(υ,μ) + k(υ,μ) + aᶠ(υ,μ,ez)
-  bᵛ(μ) = f(μ, ρₕ,ez)
+  bᵛ(μ) = f(μ, ρₕ,ez)  
 
   aᵛ, bᵛ
 end
 
 
-function cortical_flow_problem_mechanochemical_axisymmetric_dimensional( η_visc ,
+function cortical_flow_problem_mechanochemical_axisymmetric_dimensional(xₕ,xₕ_old,Δt, η_visc ,
     ρₕ,ez,dΩᶜ,dΓ,nΓ,γ::Float64,χᵣ::Float64,χ₀::Float64,ξ₀,sigmaₐ⁰,  sigmaρ⁰)
 
   # Viscous term
@@ -243,7 +243,7 @@ function cortical_flow_problem_mechanochemical_axisymmetric_dimensional( η_visc
  
   
   χ(R) = (χ₀+χᵣ*R)
-
+  dotx = (xₕ-xₕ_old)/Δt
   # Friction term
   aᶠ(u,v,R) = ∫(χ(R)*(u⋅v)*y )dΓ
 
@@ -259,7 +259,7 @@ function cortical_flow_problem_mechanochemical_axisymmetric_dimensional( η_visc
   sᵘ(υ,μ) = ∫( (η_visc * γ) * ((nΓ⋅ε(υ))⊙(nΓ⋅ε(μ))) )dΩᶜ
 
   # ** weak tangentiality **
-  η = 10.0 / ((2/40)^2)
+  η = 10000.0 / ((2/40)^2)
   k(u,v) = ∫( η*((u⋅nΓ)*(v⋅nΓ)) )dΓ
 
   # Rigid body motion and volum constraint
@@ -268,7 +268,7 @@ function cortical_flow_problem_mechanochemical_axisymmetric_dimensional( η_visc
   r²(u,ℓ) = ∫( ( u⋅(ℓ*nΓ ) )*y )dΓ
 
   aᵛ(υ,μ) = aʷ(υ,μ) + sᵘ(υ,μ) + k(υ,μ) + aᶠ(υ,μ,ez)
-  bᵛ(μ) = f(μ, ρₕ,ez)
+  bᵛ(μ) = f(μ, ρₕ,ez) + aᶠ(dotx,μ,ez)
 
   aᵛ, bᵛ
 end

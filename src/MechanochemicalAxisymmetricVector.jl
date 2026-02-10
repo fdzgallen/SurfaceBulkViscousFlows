@@ -4,7 +4,6 @@
 # One can work with pure local inhibition by changing the following mechanical parameters:
 # coup.vCTE=0   coup.α=0   coup.β=0   σₐ₀=0
 # Written by Andreu F Gallen (working in Turlier lab) and Eric Neiva, in collaboration with Orion Weiner's lab
-
 include("Plots_RhoRacA.jl") 
 
 @kwdef struct MechanicalParams
@@ -13,6 +12,7 @@ include("Plots_RhoRacA.jl")
     χ₀::Real          # Fricción basal
     sigmaₐ⁰::Real     # Tensión activa basal
     sigmaρ⁰::Real     # Tensión dependiente de Rho
+    S::Real           # Parámetro geométrico/estabilización
     Λ::Real           # Parámetro geométrico/estabilización
     M::Real           # Parámetro geométrico/estabilización
     R::Real           # Radio de la célula
@@ -88,7 +88,7 @@ function MCA_bound_unbound_weak_forms(Δt,kon,koff,λᵇ,λ,R2,D,nΓ,dΓ)
   τ = TensorValue(0.0,-1.0, 1.0, 0.0) ⋅ nΓ    # vector tangente
 
   mMCA(Δt,MCA_b,w) = ∫( ( (MCA_b*w)/Δt )*y )dΓ 
-  aMCAb(MCA_b,v,w) = ∫( ( (MCA_b*w)/Δt )*y )dΓ + ∫( ( 0.005 * (∇ᵈ(MCA_b,nΓ)⋅∇ᵈ(w,nΓ)) )*y )dΓ +  #diffusion term for stabilisation purposes only
+  aMCAb(MCA_b,v,w) = ∫( ( (MCA_b*w)/Δt )*y )dΓ + ∫( ( 0.0005 * (∇ᵈ(MCA_b,nΓ)⋅∇ᵈ(w,nΓ)) )*y )dΓ +  #diffusion term for stabilisation purposes only
     ∫( ( koff * ( MCA_b * w ) )*y )dΓ + 
     ∫( ( w * ( (v ⋅ τ) * (∇ᵈ(MCA_b,nΓ)⋅τ)))*y )dΓ  +  
     ∫( w * ( MCA_b * ( (τ ⋅ ∇ᵈ(v,nΓ)) ⋅ τ  ) ) * y )dΓ  
@@ -100,30 +100,14 @@ function MCA_bound_unbound_weak_forms(Δt,kon,koff,λᵇ,λ,R2,D,nΓ,dΓ)
   aMCAu(MCA_u,x,x_old,w) = ∫( ( (MCA_u*w)/Δt )*y )dΓ + ∫( ( D * ( ∇ᵈ(MCA_u,nΓ)⋅∇ᵈ(w,nΓ) ) )*y )dΓ + 
     ∫( ( kon * ( MCA_u * w ) )*y )dΓ + 
     ∫( ( w * ( ( (x-x_old)⋅τ / Δt ) * ( ∇ᵈ(MCA_u,nΓ)⋅τ ) + 
-    MCA_u * ( ( τ ⋅ ∇ᵈ(x,nΓ)⋅τ  ) - ( τ ⋅ ∇ᵈ(x_old,nΓ)⋅τ ) ) / Δt ) )*y )dΓ  + 
-    ∫( ( λᵇ * ( ( MCA_u*MCA_u*MCA_u ) * w ) )*y )dΓ
+    MCA_u * ( ( τ ⋅ ∇ᵈ(x,nΓ)⋅τ  ) - ( τ ⋅ ∇ᵈ(x_old,nΓ)⋅τ ) ) / Δt ) )*y )dΓ  #+ 
+    #∫( ( λᵇ * ( ( MCA_u*MCA_u*MCA_u ) * w ) )*y )dΓ
   bMCAu(w,MCA_b,MCAu_old,λ) = ∫( ( koff * (MCA_b*w))*y )dΓ + ∫( ( (MCAu_old*w)/Δt )*y )dΓ  +
     ∫( ( λ/(π*R2) * (koff/(kon+koff))* w )*y )dΓ # mMCA(control.Δt,MCAu_old,w) 
 
   mMCA,aMCAb,bMCAb,aMCAu,bMCAu
 end
-
-# function rac_rho_weak_forms(control.Δt,kin.dᵃ,kin.dᵇ,kin.Drac,kin.Drho,coup.α,coup.β,α₀v,β₀v,coup.rho0,coup.MCAbth,coup.sig0,coup.tenth,a_t,b_t,uh_rac_old,uh_rho_old,nΓ,dΓ,mMCA)
-#   #DEFINING the equations for Rac and Rho
-#   a_rac(rac,w,rho,MCA_b,α₀v) = (1/kin.dᵃ) * mMCA(control.Δt,rac,w) + 
-#     ∫( ( kin.Drac * (∇ᵈ(rac,nΓ)⋅∇ᵈ(w,nΓ)) )*y )dΓ + ∫( ( w*rac )*y )dΓ #+ ∫( ( w*rac * ( α₀v/(1+rho*rho) + coup.α*((0.5 - threshold(MCA_b,coup.rho0,coup.MCAbth))) / (1+rho*rho) ) )*y )dΓ
-#   b_rac(w,rho,MCA_b,α₀v,rac_old) = (1/kin.dᵃ) * mMCA(control.Δt,rac_old,w) + 
-#     ∫( ( w*(α₀v + coup.α*(0.5 - threshold(MCA_b,coup.rho0,coup.MCAbth)))/(1+rho*rho) )*y )dΓ  #∫( ( w*(a_t)*(α₀v/(1+rho*rho) + coup.α*((0.5 - threshold(MCA_b,coup.rho0,coup.MCAbth)))/(1+rho*rho)) )*y )dΓ  
  
-#   a_rho(rho,w,ten,rac,β₀v) = (1/kin.dᵇ)*mMCA(control.Δt,rho,w) + 
-#     ∫( ( kin.Drho * (∇ᵈ(rho,nΓ)⋅∇ᵈ(w,nΓ)) )*y )dΓ + 
-#     ∫( ( w*rho )*y )dΓ# +  ∫( ( w*rho * ( β₀v/(1+rac*rac)))*y )dΓ + ∫( (w*rho*(coup.β*threshold(ten,coup.sig0,coup.tenth)/(1+rac*rac) ) )*y )dΓ # +
-#     # ∫( ( kin.λʳᴬ*((rho*rho*rho)*w) )*y )dΓ  
-#   b_rho(w,ten,rac,β₀v,rho_old) = (1/kin.dᵇ)*mMCA(control.Δt,rho_old,w) + ∫( ( w*(β₀v + coup.β*threshold(ten,coup.sig0,coup.tenth))/(1+rac*rac) )*y )dΓ #+ ∫( ( w*b_t*(β₀v/(1+rac*rac)) + coup.β*threshold(ten,coup.sig0,coup.tenth)/(1+rac*rac) )*y )dΓ
-
-#   a_rac, b_rac, a_rho, b_rho
-# end
-
 #function to run a single simulation with a few given parameters
 function run_mechanochemical_axisymmetric_vector(
     mech::MechanicalParams,
@@ -360,7 +344,7 @@ function run_mechanochemical_axisymmetric_vector(
   ρₕ = interpolate_everywhere(1.0,Uᴿ) 
   Rₕ_old = Rₕ
   ρₕ_old = ρₕ
-  a_R, b_R, a_ρ, b_ρ = rac_rho_weak_forms2(control.Δt,kin.dᵃ,50*(kin.dᵇ),kin.Drac,kin.Drho,nΓ,dΓ,coup.α,coup.β)
+  a_R, b_R, a_ρ, b_ρ = rac_rho_weak_forms2(control.Δt,200*kin.dᵃ,200*(kin.dᵇ),kin.Drac,kin.Drho,nΓ,dΓ,coup.α,coup.β)
  
   #ezrin initialization
   mMCA,aMCAb,bMCAb,aMCAu,bMCAu = MCA_bound_unbound_weak_forms(
@@ -376,26 +360,28 @@ function run_mechanochemical_axisymmetric_vector(
   # Terms of the bilinear and linear forms
   # TERM 1. ∫( 2M⋅εᴾ(u):ε(v) )dΓ = ∫( 2M⋅ε(u):ε(v) + 
   #                                   2M⋅εᴺ(u):ε(v) )dΓ 
+  #TODO ENSURE IF ITS 2*M (previously) OR M
   aᴹ(M,R,x_old,x,w) = 
-    ∫( ( 2*M * ( x⋅w/2 + 
-                R*R * ( ∇ᵈ(x,nΓ) ⊙ ∇ᵈ(w,nΓ) ) + 
+    ∫( ( 2* M * ( x⋅w/2 + 
+                R*R * ( ∇ᶜ(x,nΓ) ⊙ ∇ᶜ(w,nΓ) ) + 
                 (cotθ2) * (x⋅w) ) ) * sinθ )dΓ +
-    ∫( ( M/R * ( 
-      ( x_old ⋅ x + R*R * ( ∇ᵈ(x_old,nΓ)⊙∇ᵈ(x,nΓ) ) ) * ( R * ∇ᵈ(w,nΓ)⋅τ ) + 
+    ∫( ( 2*M/R/2 * ( 
+      ( x_old ⋅ x + R*R * ( ∇ᶜ(x_old,nΓ)⊙∇ᶜ(x,nΓ) ) ) * ( R * ∇ᶜ(w,nΓ)⋅τ ) + 
       ( cotθ3 * x_old ) * (x ⋅ w) ) )⋅τ * sinθ )dΓ 
   #
   # TERM 2. ∫( L⋅(tr(εᴾ(u))Id):ε(v) )dΓ = ∫( L⋅tr(ε(u)):ε(v) +  
   #                                          L⋅tr(εᴺ(u)):ε(v) )dΓ
   # Homework: Implement TERM 2
   aᴸ(L,R,x_old,x,w) = 
-    ∫( L*( R*R*(∇ᵈ(x,nΓ) ⊙ ∇ᵈ(w,nΓ)) + (cotθ*(x ⋅ ∇ᵈ(w,nΓ)) + cotθ*(w⋅∇ᵈ(x,nΓ)))⋅τ + 
+    ∫( L*( R*R*(∇ᶜ(x,nΓ) ⊙ ∇ᶜ(w,nΓ)) + (cotθ*(x ⋅ ∇ᶜ(w,nΓ)) + cotθ*(w⋅∇ᶜ(x,nΓ)))⋅τ + 
                 (cotθ2) * (x⋅w)  ) * sinθ )dΓ +
-    ∫( 0.5/R*L*( ( (cscθ2)*(x_old⋅x) + R*R * ∇ᵈ(x,nΓ) ⊙ ∇ᵈ(x_old,nΓ) )*
-    ( R*∇ᵈ(w,nΓ)⋅τ + cotθ * w )⋅τ ) * sinθ )dΓ
- 
+    ∫( 0.5/R*L*( ( (cscθ2)*(x_old⋅x) + R*R * ∇ᶜ(x,nΓ) ⊙ ∇ᶜ(x_old,nΓ) )*
+    ( R*∇ᶜ(w,nΓ)⋅τ + cotθ * w )⋅τ ) * sinθ )dΓ
+
   bₓ(MCA_b,v,w) = ∫( ( mech.χ*( MCA_b)*v⋅w ) * (mech.R*mech.R) * sinθ )dΓ
   # Preserve mass term for Backward Euler time integration
   m(MCA_b,Δt,x,w) = ∫( ( (mech.χ*MCA_b) * (x⋅w) / Δt ) * (mech.R*mech.R) * sinθ )dΓ
+ 
 
   # ** weak tangentiality **
   bo = 10.0 / ((2/40)^2)
@@ -419,19 +405,24 @@ function run_mechanochemical_axisymmetric_vector(
   Minitial = sum_uh_MCAu + sum_uh_MCAb 
   λ = conservation(sum_uh_MCAu,sum_uh_MCAb,Minitial)
 
- # Computing tension 
-  Vᵗ = TestFESpace(Ωᶜ,reffeᵉ,dirichlet_tags=[8]) 
-  Utʷ = TrialFESpace(Vᵗ, [τ ⋅ ∇ᵈ(xₕ, nΓ) ⋅ τ])
+  I = TensorValue(1.0,0.0,0.0,1.0)
 
+ # Computing tension  
   mten(u,v) = ∫( (u*v)*y )dΓ
-  ∂u(u) = mech.R*(τ ⋅ (∇ᵈ(u,nΓ))⋅ τ)
-  mten2(u,v) = ∫(( ( 1 + (mech.Λ+mech.M)*( ∂u(u) + (u ⋅ τ) * cotθ)/mech.R + ( ∂u(u)*∂u(u) + (u⋅u)*cscθ2)/(mech.R*mech.R) )*v)*y )dΓ
+  N(u) = mech.S * I + mech.Λ * tr(εᶜ(u,nΓ)) * I + mech.M * (εᶜ(u,nΓ))
+  # @show N
+  # tNt = τ ⋅ (N ⋅ τ)
+  # @show tNt
+  ∂u(u) = mech.R*(τ ⋅ (∇ᶜ(u,nΓ))⋅ τ)
+  mten2(u,v) = ∫(( ( τ ⋅ (N(u) ⋅ τ)  )*v)*y )dΓ # ∫(( ( mech.S + (mech.Λ+mech.M)*(( ∂u(u) + (u ⋅ τ) * cotθ)/mech.R + ( ∂u(u)*∂u(u) + (u⋅u)*cscθ2)/(mech.R*mech.R))   )*v)*y )dΓ
+  #mten2(u,v) = ∫(( ( mech.S + (mech.Λ+mech.M)*( ∂u(u) - (u ⋅ τ) * cotθ)/mech.R   )*v)*y )dΓ
   sten(u,v) = ∫( 10*γ₀*((nΓ⋅∇(u))⊙(nΓ⋅∇(v))) )dΩᶜ
 
   Aten(u,v) = mten(u,v) + sten(u,v) 
   bten(v) = mten2(xₕ,v)
-  op_ten = AffineFEOperator(Aten,bten,Utʷ,Vᵗ) 
-
+  op_ten = AffineFEOperator(Aten,bten,Uᴿ,Vᴿ)
+  
+  #_trN = ( 1 + (mech.Λ+mech.M)*( mech.R*(τ ⋅ (∇ᵈ(xₕ,nΓ))⋅ τ) + (xₕ ⋅ τ) * cotθ)/mech.R + ( mech.R*(τ ⋅ (∇ᵈ(xₕ,nΓ))⋅ τ)*mech.R*(τ ⋅ (∇ᵈ(xₕ,nΓ))⋅ τ) + (xₕ⋅xₕ)*cscθ2)/(mech.R*mech.R) )
   ten = solve(op_ten)
 
   #SOLVE Rac AT t=0
@@ -472,10 +463,13 @@ function run_mechanochemical_axisymmetric_vector(
   σₐt = zeros(nΔt,num_qpoints)
   χt = zeros(nΔt,num_qpoints)
   vt = zeros(nΔt,num_qpoints)
+  vnt = zeros(nΔt,num_qpoints)
   xt = zeros(nΔt,num_qpoints)
   tent = zeros(nΔt,num_qpoints)
   _vt = vcat(lazy_map(υₕ ⋅ τ,xΓ)...) 
   vt[1,:] = _vt[perm] 
+  _vnt = vcat(lazy_map(υₕ ⋅ nΓ,xΓ)...) 
+  vnt[1,:] = _vnt[perm] 
   _xt = vcat(lazy_map(xₕ ⋅ τ,xΓ)...) 
   xt[1,:] = _xt[perm] 
   MCAbt[1,:] = vcat(lazy_map(uh_MCAb,xΓ)...)[perm]
@@ -518,7 +512,7 @@ function run_mechanochemical_axisymmetric_vector(
       α₀v = solve(op_α₀)
       β₀v = solve(op_β₀)
     end
-    if i > 300
+    if i > 150
       op_α₀ = AffineFEOperator(A₀opto,bα₀opto,Uᴿ,Vᴿ)
       op_β₀ = AffineFEOperator(A₀opto,bβ₀opto,Uᴿ,Vᴿ)
       α₀v = solve(op_α₀)
@@ -532,7 +526,7 @@ function run_mechanochemical_axisymmetric_vector(
     @info "Time step $i, time $(trunc(t, digits=4)) and time step $(control.Δt)"
  
     
-    aᵛ,bᵛ = cortical_flow_problem_mechanochemical_axisymmetric_dimensional(mech.η,
+    aᵛ,bᵛ = cortical_flow_problem_mechanochemical_axisymmetric_dimensional(xₕ,xₕ_old, control.Δt,mech.η,
          ρₕ,uh_MCAb,dΩᶜ,dΓ,nΓ,γʷ,mech.χ,mech.χ₀,activity,mech.sigmaₐ⁰,  mech.sigmaρ⁰)
     op = AffineFEOperator(aᵛ,bᵛ,UVᵛ,Yᵛ)
     υₕ = solve(op)
@@ -546,6 +540,8 @@ function run_mechanochemical_axisymmetric_vector(
     op_x= AffineFEOperator(aˣ,bˣ,UXʷ,Vʷ)
     xₕ = solve(op_x) 
     op_ten = AffineFEOperator(Aten,bten,Uᴿ,Vᴿ) #Utʷ,Vᵗ) 
+    # N = mech.S * I + mech.Λ * tr(εᶜ(xₕ,nΓ)) * I + mech.M * (εᶜ(xₕ,nΓ))
+    # tNt = τ ⋅ (N ⋅ τ)
     ten = solve(op_ten)
    # ten = ∫(( mech.k*( τ ⋅ ∇ᵈ(xₕ,nΓ) ⋅ τ ))*y )dΓ
     xₕ_old =  xₕ
@@ -561,7 +557,7 @@ function run_mechanochemical_axisymmetric_vector(
     Rₕaux = vcat(lazy_map(Rₕ,xΓ)...)[perm]   
     _ten = vcat(lazy_map(ten,xΓ)...)[perm]
     _ten = _ten[end]*threshold2( _ten[end] , 0.0001 , 0.0 )
-    vₗ = coup.vCTE * threshold2( Rₕaux[end] , coup.rac0 , 1.3*Rₕaux[1] )/(1+_ten * _ten/coup.ten0) #velocity polimerization  
+    vₗ = coup.vCTE * threshold2( Rₕaux[end] , coup.rac0 , 1.3*Rₕaux[1] )/(1 +_ten * _ten/coup.ten0) #velocity polimerization  
     _xₗ = xₗ*0.9 + control.Δt*vₗ #we introduce a slight relaxation for the membrane, decreases 5% x at the Boundary condition only
     xₗ = _xₗ 
 
@@ -590,6 +586,8 @@ function run_mechanochemical_axisymmetric_vector(
     χt[i,:] =  mech.χ₀ .+ mech.χ*MCAbt[i,:] #χR(ract[i,:]) 
     _vt = υₕ⋅τ
     vt[i,:]  = vcat(lazy_map(_vt,xΓ)...)[perm] 
+    _vnt = vcat(lazy_map(υₕ ⋅ nΓ,xΓ)...) 
+    vnt[i,:] = _vnt[perm] 
     _xt = xₕ⋅τ
     xt[i,:]  = vcat(lazy_map(_xt,xΓ)...)[perm] 
     tent[i,:] = vcat(lazy_map(ten,xΓ)...)[perm]
@@ -601,7 +599,7 @@ function run_mechanochemical_axisymmetric_vector(
   
   # plots_run_singlet(nΔt,vt*0.0006,xt*6,MCAbt,ract,rhot,pPNG,
   #  num_qpoints,π*R2*6,Δt₀*10000,control.T*10000,flat_alenΓ,σₐt,χt,tent*10)  #nΔt,vt,ract,rhot,pPNG,   partition,L,control.Δt,control.T,xplot
-  plots_run_singlet(nΔt,vt,xt*6,MCAbt,ract,rhot,pPNG,
+  plots_run_singlet(nΔt,vt,vnt,xt*6,MCAbt,ract,rhot,pPNG,
    num_qpoints,π*R2,control.Δt,control.T,flat_alenΓ,σₐt,χt,tent)  #nΔt,vt,ract,rhot,pPNG,   partition,L,control.Δt,control.T,xplot
 
 end

@@ -215,7 +215,7 @@ function plots_run_singlet(nΔt,vt,#ezrinbt,ezrinut,
   savefig(pPNG*"all_t=$T.pdf")
 end
 
-function plots_run_singlet(nΔt,vt,xt,ezrinbt,#ezrinut,
+function plots_run_singlet(nΔt,vt,vnt,xt,ezrinbt,#ezrinut,
   ract,rhot,pPNG,
    partition,L,Δt,T,xplot,σₐt,χt,tent)
  # xplot = range(0, L, length=partition)
@@ -232,8 +232,8 @@ function plots_run_singlet(nΔt,vt,xt,ezrinbt,#ezrinut,
       ract_mirror[i,2*partition+1-j]=ract[i,partition-j+1]
       rhot_mirror[i,j]=rhot[i,partition-j+1]
       rhot_mirror[i,2*partition+1-j]=rhot[i,partition-j+1]
-     # MCAt_mirror[i,j]=ezrinbt[i,partition-j+1]
-     # MCAt_mirror[i,2*partition+1-j]=ezrinbt[i,partition-j+1]
+     MCAt_mirror[i,j]=ezrinbt[i,partition-j+1]
+     MCAt_mirror[i,2*partition+1-j]=ezrinbt[i,partition-j+1]
     end 
   end
   heatmap(tplot,x2plot,transpose(MCAt_mirror),  size=(250, 220),margin=15px, plot_title="MCA protein",plot_titlefontsize=10, framestyle = :box)
@@ -289,6 +289,15 @@ function plots_run_singlet(nΔt,vt,xt,ezrinbt,#ezrinut,
   # plot!(legend=:topright, legendcolumns=3)
   savefig(pPNG*"vt.pdf")
 
+  vplot=vnt[1:plot_lines:end,:]
+  plot(xplot,transpose(vplot), legend=false,color = :matter, line_z = (1:n)',size=(300, 220), margin = 5px, alpha = 0.9, framestyle = :box)
+  #plot!(cbar=true)
+  # ylims!(0, Ntot/L)
+  xlabel!("Cell perimeter (radians)")
+  ylabel!("v normal")
+  # plot!(legend=:topright, legendcolumns=3)
+  savefig(pPNG*"vnt.pdf")
+
 
   xtplot=xt[1:plot_lines:end,:]
   p6 = plot(xplot,transpose(xtplot), legend=false,color = :matter, line_z = (1:n)',size=(300, 220), margin = 5px, alpha = 0.9, framestyle = :box)
@@ -299,14 +308,26 @@ function plots_run_singlet(nΔt,vt,xt,ezrinbt,#ezrinut,
   # plot!(legend=:topright, legendcolumns=3)
   savefig(pPNG*"xt.pdf")
 
-  ρtplot=ezrinbt[5:plot_lines:end,:]
+  ρtplot=ezrinbt[5:plot_lines:end,:] 
   p4 = plot(xplot,transpose(ρtplot), legend=false, color = :matter, line_z = (1:n)',size=(300, 220), margin = 5px,linealpha=0.9,linewidth=1, framestyle = :box)
   #ylims!(0.045, 0.12)
+  ylims!(0.5*ezrinbt[1,1], 1.7*ezrinbt[1,1])
   xlabel!("Cell perimeter (μm)")
   ylabel!("MCA protein")
   # plot!(legend=:topright, legendcolumns=3)
   savefig(pPNG*"rhot.pdf")
 
+  for i in 1:1:nΔt
+    for j in 1:1:(partition) 
+     MCAt_mirror[i,j]=tent[i,partition-j+1]
+     MCAt_mirror[i,2*partition+1-j]=tent[i,partition-j+1]
+    end 
+  end
+  heatmap(tplot,x2plot,transpose(MCAt_mirror),  size=(250, 220),margin=15px, plot_title="tension",plot_titlefontsize=10, framestyle = :box)
+  xlabel!("time (sec)")
+  ylabel!("Cell perimeter (μm)")
+  savefig(pPNG*"ten_mi.pdf")
+  
   tenplot=tent[5:plot_lines:end,:]
   p3 = plot(xplot,transpose(tenplot), legend=false, color = :matter, line_z = (1:n)',size=(300, 220), margin = 5px,linealpha=0.9,linewidth=1, framestyle = :box)
   #ylims!(0.045, 0.12)
@@ -317,14 +338,17 @@ function plots_run_singlet(nΔt,vt,xt,ezrinbt,#ezrinut,
 
   ractplot=ract[:2:plot_lines:end,:]
   p2 = plot(xplot,transpose(ractplot), legend=false,color =cgrad(:matter, rev=false), line_z = (1:n)',size=(300, 220), margin = 5px,linewidth=1, framestyle = :box)
-  # ylims!(0, Ntot/L)
+  # # ylims!(0, Ntot/L)
+  #    ylims!(0.5, 1.7)
   xlabel!("Cell perimeter (μm)")
   ylabel!("Rac R")
   # plot!(legend=:topright, legendcolumns=3)
   savefig(pPNG*"ract.pdf")
 
+ 
   rhotplot=rhot[:2:plot_lines:end,:]
   p1 =plot(xplot,transpose(rhotplot), legend=false,color =cgrad(:matter, rev=false), line_z = (1:n)',size=(300, 220), margin = 5px,linewidth=1, framestyle = :box)
+  #  ylims!(0.5, 1.7)
   # ylims!(0, Ntot/L)
   xlabel!("Cell perimeter (μm)")
   ylabel!("Rho ρ")
