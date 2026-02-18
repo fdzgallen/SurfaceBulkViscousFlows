@@ -155,6 +155,8 @@ function surface_viscous_flows_axisymmetric(
  
   # Lets copy the code in the output folder to be able to check code used for each simulation
   cp(@__FILE__, pPNG*split(@__FILE__, "/")[end],force=true)
+  cp("./src/WeakForms.jl", pPNG*"WeakForms.jl",force=true)
+  cp("./examples/SurfaceViscousFlows/SurfaceViscousFlows.jl", pPNG*"SurfaceViscousFlows.jl",force=true)
 
   # Time discretisation parameters
   t₀ = 0.0
@@ -503,6 +505,8 @@ function surface_viscous_flows_axisymmetric_conserved(
  
   # Lets copy the code in the output folder to be able to check code used for each simulation
   cp(@__FILE__, pPNG*split(@__FILE__, "/")[end],force=true)
+  cp("./src/WeakForms.jl", pPNG*"WeakForms.jl",force=true)
+  cp("./examples/SurfaceViscousFlows/SurfaceViscousFlows.jl", pPNG*"SurfaceViscousFlows.jl",force=true)
 
   # Time discretisation parameters
   t₀ = 0.0
