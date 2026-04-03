@@ -217,18 +217,19 @@ function surface_viscous_flows_axisymmetric(
   β₀v = solve(op_β₀)
 
   #Rac and Rho initialization
-  Rₕ = interpolate_everywhere(0.0,Uᴿ) 
-  ρₕ = interpolate_everywhere(4.0,Uᴿ) 
+  Rₕ = interpolate_everywhere(0.0 , Uᴿ) 
+  ρₕ = interpolate_everywhere(4.0 , Uᴿ) 
   Rₕ_old = Rₕ
   ρₕ_old = ρₕ
   a_R, b_R, a_ρ, b_ρ = rac_rho_weak_forms2(Δt,dᵃ,dᵇ,Drac,Drho,nΓ,dΓ)
  
   #SOLVE Rac AT t=0
   Arac(rac,w) = a_R(rac,w,υₕ) + s₀R(rac,w)
-  Brac(w) = b_R(w,ρₕ,α₀v,Rₕ_old) #(w,rho,α₀v,rac_old)
+  Brac(w) = b_R(w,ρₕ,α₀v,Rₕ_old)  
   op_rac = AffineFEOperator(Arac,Brac,Uᴿ,Vᴿ)
   Rₕ = solve(op_rac)
   Rₕ_old = Rₕ
+  
   #SOLVE Rho AT t=0
   Arho(rho,w) = a_ρ(rho,w,υₕ) + s₀R(rho,w)
   Brho(w) = b_ρ(w,Rₕ,β₀v,ρₕ_old) #(w,rac,β₀v,rho_old)
@@ -571,8 +572,8 @@ function surface_viscous_flows_axisymmetric_conserved(
   ρₕ = interpolate_everywhere(0.0,Uᴿ) 
   Rₕ_old = Rₕ
   ρₕ_old = ρₕ
-  Rₕ_i = interpolate_everywhere(rac_total/(π*R2),Uᴿ) 
-  ρₕ_i = interpolate_everywhere(rho_total/(π*R2),Uᴿ) 
+  Rₕ_i = interpolate_everywhere(rac_total/(π*R2),Uᴿ)
+  ρₕ_i = interpolate_everywhere(rho_total/(π*R2),Uᴿ)
   a_R, b_R, a_ρ, b_ρ, a_R_i, b_R_i, a_ρ_i, b_ρ_i = rac_rho_weak_forms_conserved(Δt,dᵃ,dᵇ,Drac,Drho,nΓ,dΓ)
  
   #SOLVE Rac AT t=0
@@ -599,7 +600,7 @@ function surface_viscous_flows_axisymmetric_conserved(
   Brho_i(w) = b_ρ_i(w,rho_total,sum_ρ) #(w,rho,α₀v,rac_old)
   op_rho_i = AffineFEOperator(Arho_i,Brho_i,Uᴿ,Vᴿ)
   ρₕ_i = solve(op_rho_i)
-  
+
   # Extract quadrature points and arc length array at every cell
   xΓ = dΓ.quad.cell_point.values
   xΓ = lazy_map(Reindex(xΓ),dΓ.quad.cell_point.ptrs)     # 2D array of xΓ (1 array per cell)
@@ -632,13 +633,12 @@ function surface_viscous_flows_axisymmetric_conserved(
 
   χR(R) = (χ₀.+χ*R)
 
-  for ti in 1:100 
+  for ti in 1:100
     op_rho = AffineFEOperator(Arho,Brho,Uᴿ,Vᴿ)
-    ρₕ = solve(op_rho)
-    ρₕ_old = ρₕ
+    ρₕ = solve(op_rho); ρₕ_old = ρₕ
+
     op_rac = AffineFEOperator(Arac,Brac,Uᴿ,Vᴿ)
-    Rₕ = solve(op_rac)
-    Rₕ_old = Rₕ
+    Rₕ = solve(op_rac); Rₕ_old = Rₕ
 
     op_rho_i = AffineFEOperator(Arho_i,Brho_i,Uᴿ,Vᴿ)
     ρₕ_i = solve(op_rho_i) 
@@ -647,6 +647,7 @@ function surface_viscous_flows_axisymmetric_conserved(
 
     sum_R = ∑(∫(Rₕ)dΓ)
     sum_ρ = ∑(∫(ρₕ)dΓ)
+
     ractt = vcat(lazy_map(Rₕ,xΓ)...)
     rhott = vcat(lazy_map(ρₕ,xΓ)...) 
     ractt[:] = ractt[perm]
@@ -656,13 +657,13 @@ function surface_viscous_flows_axisymmetric_conserved(
   end
 
   while t < T + tol
-    if i > 100
+    if i == 100
       op_α₀ = AffineFEOperator(A₀opto,bα₀opto2,Uᴿ,Vᴿ)
       op_β₀ = AffineFEOperator(A₀opto,bβ₀opto2,Uᴿ,Vᴿ)
       α₀v = solve(op_α₀)
       β₀v = solve(op_β₀)
     end
-    if i > 200
+    if i == 200
       op_α₀ = AffineFEOperator(A₀opto,bα₀opto,Uᴿ,Vᴿ)
       op_β₀ = AffineFEOperator(A₀opto,bβ₀opto,Uᴿ,Vᴿ)
       α₀v = solve(op_α₀)
@@ -678,9 +679,6 @@ function surface_viscous_flows_axisymmetric_conserved(
         ρₕ,Rₕ,dΩᶜ,dΓ,nΓ,γʷ,Pe,χ,χ₀,activity,σₐ⁰,sigmaₐ⁰,  sigmaρ⁰, sigmaR⁰)
     Aᵛ,Bᵛ = _assemble_problem(aᵛ,bᵛ,assemᵛ,Xᵛ,Yᵛ,Aᵛ)
     υₕ,_ = _solve_problem(Aᵛ,Bᵛ,Xᵛ,ps)
-    υₕtan = to_tangent_vector(υₕ,nΓ) #υₕ⋅(TensorValue(0.0,-1.0,1.0,0.0)⋅nΓ)#⋅(VectorValue(0.0,-1.0,1.0,0.0)⋅nΓ)
-    writesol && postprocess_all(φ,dΩᶜ.quad.trian,
-      Rₕ,ρₕ,υₕ,υₕtan,i=i,of=output_frequency,name=pVTU)
 
     msₕ = get_maximum_magnitude_with_dirichlet(υₕ)
 
@@ -691,16 +689,19 @@ function surface_viscous_flows_axisymmetric_conserved(
 
     op_rho = AffineFEOperator(Arho,Brho,Uᴿ,Vᴿ)
     op_rac = AffineFEOperator(Arac,Brac,Uᴿ,Vᴿ)
-    Rₕ = solve(op_rac)
-    Rₕ_old = Rₕ
-    ρₕ = solve(op_rho) 
-    ρₕ_old = ρₕ 
+    Rₕ = solve(op_rac); Rₕ_old = Rₕ
+    ρₕ = solve(op_rho); ρₕ_old = ρₕ
 
     op_rho_i = AffineFEOperator(Arho_i,Brho_i,Uᴿ,Vᴿ)
     ρₕ_i = solve(op_rho_i) 
     op_rac_i = AffineFEOperator(Arac_i,Brac_i,Uᴿ,Vᴿ)
     Rₕ_i = solve(op_rac_i) 
-    
+
+    #Plotting and storing results
+    υₕtan = to_tangent_vector(υₕ,nΓ) 
+    writesol && postprocess_all(φ,dΩᶜ.quad.trian,
+      Rₕ,ρₕ,υₕ,υₕtan,i=i,of=output_frequency,name=pVTU)
+
     ract[i,:] = vcat(lazy_map(Rₕ,xΓ)...)
     rhot[i,:] = vcat(lazy_map(ρₕ,xΓ)...) 
     ract[i,:] = ract[i,perm]
